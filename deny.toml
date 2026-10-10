@@ -1,4 +1,5 @@
 [sources]
+allow-git = ["https://github.com/SORALNV/config"]
 allow-org.github = ["pimalaya"]
 unknown-git = "deny"
 unknown-registry = "deny"

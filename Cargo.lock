@@ -1967,8 +1967,7 @@ dependencies = [
 [[package]]
 name = "pimalaya-config"
 version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb9490d3768c22b4480248dbbff7b8207c2a2e60665da3086d6010de18e4a141"
+source = "git+https://github.com/SORALNV/config?rev=12ed680559182516d7df56f5bc349f820e00c808#12ed680559182516d7df56f5bc349f820e00c808"
 dependencies = [
  "anyhow",
  "dirs 6.0.0",
