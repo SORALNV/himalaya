@@ -876,6 +876,7 @@ fn envelope(id: String, flags: &PimdirFlags, summary: Option<&PimdirMailSummary>
     let mail = summary.cloned().unwrap_or_default();
 
     Envelope {
+        received_at: None,
         id,
         message_id: mail.message_id,
         in_reply_to: mail.in_reply_to,

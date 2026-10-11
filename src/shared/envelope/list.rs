@@ -376,6 +376,7 @@ mod tests {
     fn control_characters_from_the_sender_are_not_printed() {
         let mut envelopes = envelopes(false);
         envelopes.envelopes.push(Envelope {
+            received_at: None,
             id: String::from("1"),
             message_id: None,
             in_reply_to: Vec::new(),

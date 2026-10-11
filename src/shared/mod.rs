@@ -17,6 +17,8 @@ pub mod envelope;
 #[cfg(backend)]
 pub mod flag;
 #[cfg(backend)]
+pub mod inbox;
+#[cfg(backend)]
 pub mod mailbox;
 pub mod message;
 #[cfg(any(feature = "gmail", feature = "msgraph"))]

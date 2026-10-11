@@ -246,6 +246,7 @@ fn envelope_from(entry: &M2dirEntry, meta: &M2dirFlags, parsed: &ParsedMessage<'
     };
 
     Envelope {
+        received_at: None,
         id,
         message_id,
         in_reply_to,

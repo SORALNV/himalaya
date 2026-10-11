@@ -501,6 +501,7 @@ fn envelope_properties() -> Vec<JmapEmailProperty> {
         JmapEmailProperty::From,
         JmapEmailProperty::To,
         JmapEmailProperty::SentAt,
+        JmapEmailProperty::ReceivedAt,
         JmapEmailProperty::Size,
         JmapEmailProperty::HasAttachment,
         JmapEmailProperty::MessageId,
@@ -559,6 +560,7 @@ fn envelope_from(email: JmapEmail) -> Envelope {
         .collect();
 
     Envelope {
+        received_at: email.received_at.as_deref().and_then(parse_rfc3339),
         id,
         message_id,
         in_reply_to,
@@ -757,4 +759,29 @@ fn utc_midnight(date: NaiveDate) -> String {
         date.month(),
         date.day()
     )
+}
+
+#[cfg(test)]
+mod receipt_tests {
+    use super::*;
+
+    #[test]
+    fn receipt_property_is_requested_and_separate_from_sent_at() {
+        assert!(
+            envelope_properties()
+                .iter()
+                .any(|property| matches!(property, JmapEmailProperty::ReceivedAt))
+        );
+        let email: JmapEmail = serde_json::from_value(serde_json::json!({
+            "id": "fixture", "receivedAt": "2026-10-11T03:00:00Z",
+            "sentAt": "2001-01-01T00:00:00Z"
+        }))
+        .unwrap();
+        let envelope = envelope_from(email);
+        assert_eq!(
+            envelope.received_at.unwrap().to_rfc3339(),
+            "2026-10-11T03:00:00+00:00"
+        );
+        assert_ne!(envelope.received_at, envelope.date);
+    }
 }

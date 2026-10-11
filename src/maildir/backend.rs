@@ -233,6 +233,7 @@ fn envelope_from_entry(entry: &MaildirFullEntry) -> Envelope {
         .unwrap_or_default();
 
     Envelope {
+        received_at: None,
         id,
         message_id,
         in_reply_to,

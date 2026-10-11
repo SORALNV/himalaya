@@ -102,6 +102,10 @@ pub struct Cli {
 /// Top-level subcommands.
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// List inboxes across accounts (fork-only extension).
+    #[cfg(backend)]
+    #[command(subcommand)]
+    Inbox(crate::shared::inbox::InboxCommand),
     #[cfg(backend)]
     #[command(subcommand, alias = "mailboxes")]
     Mailbox(MailboxCommand),
@@ -282,6 +286,8 @@ impl Command {
         backend: Backend,
     ) -> Result<()> {
         match self {
+            #[cfg(backend)]
+            Self::Inbox(cmd) => cmd.execute(printer, config_paths, account_name, backend),
             #[cfg(backend)]
             Self::Mailbox(cmd) => {
                 let (config, name, account_config) =

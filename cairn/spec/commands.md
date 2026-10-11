@@ -6,6 +6,8 @@ status: current
 
 # Commands
 
+The fork additionally exposes `inbox list`, a multi-account shared command described in [unified-inbox.md](unified-inbox.md). It lists all configured accounts unless global `-a` selects one, unlike the single-account shared commands below.
+
 The command tree splits into three groups. The shared API (mailbox, envelope, flag, message, attachment) is the cross-protocol least-common-denominator surface, behaving the same whatever backend serves the active account. The protocol-specific APIs (imap, jmap, gmail, msgraph, maildir, m2dir, mbox, pimdir, smtp, sieve) each expose the full surface of one backend, including operations the shared API cannot model. The meta commands (account, completion, manual, json-schema) cover account configuration, shell completions, man pages and JSON Schemas.
 
 ### Requirement: Shared commands over a selected backend

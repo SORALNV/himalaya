@@ -102,7 +102,7 @@ impl ImapClient {
         with_attachment: bool,
     ) -> Result<Vec<Envelope>> {
         let mbox = parse_mailbox(mailbox)?;
-        let select = self.select(mbox, ImapMailboxSelectOptions::default())?;
+        let select = self.examine(mbox, Default::default())?;
         let exists = select.exists.unwrap_or(0);
 
         let Some(window) = compute_window(exists, page, page_size) else {
@@ -465,6 +465,7 @@ fn apply_status(mailbox: &mut Mailbox, items: Vec<StatusDataItem>) {
 fn build_item_names(with_attachment: bool) -> MacroOrMessageDataItemNames<'static> {
     let mut names = vec![
         MessageDataItemName::Uid,
+        MessageDataItemName::InternalDate,
         MessageDataItemName::Flags,
         MessageDataItemName::Envelope,
         MessageDataItemName::Rfc822Size,
@@ -507,11 +508,15 @@ fn envelope_from(seq: u32, items: Vec<MessageDataItem<'static>>) -> Envelope {
     let mut from = Vec::new();
     let mut to = Vec::new();
     let mut date: Option<DateTime<FixedOffset>> = None;
+    let mut received_at = None;
     let mut size: u64 = 0;
     let mut has_attachment: Option<bool> = None;
 
     for item in items {
         match item {
+            MessageDataItem::InternalDate(value) => {
+                received_at = Some(*value.as_ref());
+            }
             MessageDataItem::Uid(uid) => id = uid.get().to_string(),
             MessageDataItem::Flags(fs) => {
                 flags = fs.into_iter().filter_map(flag_from_fetch).collect();
@@ -547,6 +552,7 @@ fn envelope_from(seq: u32, items: Vec<MessageDataItem<'static>>) -> Envelope {
     }
 
     Envelope {
+        received_at,
         id,
         message_id,
         in_reply_to,

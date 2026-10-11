@@ -32,6 +32,10 @@ Let the human review intent **before** you write code. Trivial fixes may skip th
 
 Check the structure yourself against the strict rules (CAIRN.md §8): a discoverable root, `spec/ changes/ log/` present, every Cairn file carrying a valid `cairn:` type, each change having `proposal.md` and `tasks.md`, kebab-case ids, literal delta headings, and a log entry for every landed change. Everything else (prose, naming, ordering, extra files) is free.
 
+## Fork policy
+
+User-requested custom features belong only to SORALNV/himalaya. Do not open upstream feature PRs or add custom features to the existing upstream security PR branches. Keep their security-only scope intact. The unified inbox and future customizations follow this policy unless the user explicitly changes it.
+
 ## Everything else
 
 For how this binary is built, where changes belong, and the Pimalaya standards it follows, read `CONTRIBUTING.md` and the `src/main.rs` header (the crate's architecture document). Manual provider test reports live under `cairn/spec/testing/`.

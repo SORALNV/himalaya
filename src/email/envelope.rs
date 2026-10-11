@@ -15,6 +15,9 @@ use crate::email::{address::Address, flag::Flag};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct Envelope {
+    /// Backend receipt metadata, kept out of the legacy envelope JSON.
+    #[serde(skip)]
+    pub received_at: Option<DateTime<FixedOffset>>,
     /// The identifier the backend knows the message by: an IMAP UID, a
     /// JMAP email id, a Maildir filename id.
     pub id: String,

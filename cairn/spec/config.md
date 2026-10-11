@@ -6,6 +6,10 @@ status: current
 
 # Config
 
+### Requirement: Fork-only inbox default
+
+The global `[inbox]` block MAY set `since` to a positive integer duration with unit `s`, `m`, `h` or `d`. It SHALL affect only `inbox list`, not normal envelope or protocol commands. CLI `--since` SHALL override it and `--all-time` SHALL disable it.
+
 Himalaya is configured through TOML: a top-level block plus named account blocks, one table per account under `[accounts.<name>]`, each carrying optional per-backend sub-blocks. The config schema is a set of pure DTOs (`*Config` types) mirroring the nested TOML shape; the selected account is flattened into a runtime `Account` view that commands consume. Config files stay user-owned: Himalaya never writes them.
 
 ### Requirement: Multi-account schema

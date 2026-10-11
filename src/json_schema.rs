@@ -34,6 +34,7 @@ pub fn schemas() -> BTreeMap<String, Value> {
 
     #[cfg(backend)]
     {
+        insert!("himalaya-inbox-list", crate::shared::inbox::InboxOutput);
         insert!(
             "himalaya-mailbox-list",
             crate::shared::mailbox::list::Mailboxes

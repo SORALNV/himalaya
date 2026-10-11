@@ -149,6 +149,7 @@ mod tests {
 
     fn envelope() -> Envelope {
         Envelope {
+            received_at: None,
             id: String::from("1"),
             message_id: None,
             in_reply_to: Vec::new(),

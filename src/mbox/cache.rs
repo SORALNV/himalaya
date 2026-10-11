@@ -106,6 +106,7 @@ mod tests {
 
     fn envelope(id: &str) -> Envelope {
         Envelope {
+            received_at: None,
             id: id.into(),
             message_id: None,
             in_reply_to: Vec::new(),

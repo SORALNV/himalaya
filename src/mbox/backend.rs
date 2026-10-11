@@ -444,6 +444,7 @@ fn envelope_from(contents: &[u8]) -> Envelope {
         .unwrap_or_default();
 
     Envelope {
+        received_at: None,
         id: String::new(),
         message_id,
         in_reply_to,

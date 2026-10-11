@@ -119,19 +119,26 @@ impl MsgraphClient {
         page_size: Option<u32>,
         _with_attachment: bool,
     ) -> Result<Vec<Envelope>> {
-        let page = page.unwrap_or(1).max(1);
-        let (top, skip) = match page_size {
-            Some(size) => (Some(size), Some((page - 1) * size)),
-            None => (None, None),
-        };
-
         let params = MsgraphMessagesListParams {
-            top,
-            skip,
+            top: page_size,
             select: Some(ENVELOPE_SELECT),
             ..Default::default()
         };
-        let messages = self.messages_list(Some(mailbox), &params)?.response.value;
+        // NOTE: follow the server cursor: a short page need not mean exhaustion,
+        // and a calculated $skip can miss messages when the server caps a page.
+        let mut response = self.messages_list(Some(mailbox), &params)?.response;
+        for _ in 1..page.unwrap_or(1).max(1) {
+            let Some(next) = response.next_link else {
+                return Ok(Vec::new());
+            };
+            let url = Url::parse(&next).context("Cannot parse the message paging link")?;
+            if !trusted_paging_origin(&url) {
+                anyhow::bail!("Refusing an untrusted Microsoft Graph paging origin");
+            }
+            let coroutine = MsgraphSend::<MsgraphMessagesListResponse>::get(&self.auth, url);
+            response = self.run(coroutine)?.response;
+        }
+        let messages = response.value;
 
         Ok(messages.into_iter().map(envelope_from).collect())
     }
@@ -278,6 +285,7 @@ fn envelope_from(message: MsgraphMessage) -> Envelope {
         .collect();
 
     Envelope {
+        received_at: date,
         id: message.id,
         message_id,
         // NOTE: Graph carries In-Reply-To inside `internetMessageHeaders`
@@ -292,6 +300,14 @@ fn envelope_from(message: MsgraphMessage) -> Envelope {
         size: 0,
         has_attachment: message.has_attachments,
     }
+}
+
+fn trusted_paging_origin(url: &Url) -> bool {
+    url.scheme() == "https"
+        && url.host_str() == Some("graph.microsoft.com")
+        && url.port_or_known_default() == Some(443)
+        && url.username().is_empty()
+        && url.password().is_none()
 }
 
 /// Builds the message PATCH body applying `flags` under `op`. `Set`
@@ -405,4 +421,38 @@ fn parse_rfc3339(raw: &str) -> Option<DateTime<FixedOffset>> {
         return None;
     }
     DateTime::parse_from_rfc3339(trimmed).ok()
+}
+
+#[cfg(test)]
+mod receipt_tests {
+    use super::*;
+
+    #[test]
+    fn received_datetime_is_preserved() {
+        let message: MsgraphMessage = serde_json::from_value(serde_json::json!({
+            "id": "fixture", "receivedDateTime": "2026-10-11T03:00:00Z"
+        }))
+        .unwrap();
+        assert_eq!(
+            envelope_from(message).received_at.unwrap().to_rfc3339(),
+            "2026-10-11T03:00:00+00:00"
+        );
+    }
+
+    #[test]
+    fn paging_never_forwards_bearer_tokens_to_other_origins() {
+        assert!(trusted_paging_origin(
+            &Url::parse("https://graph.microsoft.com/v1.0/me/messages?$skiptoken=opaque").unwrap()
+        ));
+        for raw in [
+            "http://graph.microsoft.com",
+            "https://example.test",
+            "https://graph.microsoft.com.example.test",
+            "https://graph.microsoft.com:444",
+            "https://user@graph.microsoft.com",
+            "https://user:secret@graph.microsoft.com",
+        ] {
+            assert!(!trusted_paging_origin(&Url::parse(raw).unwrap()), "{raw}");
+        }
+    }
 }

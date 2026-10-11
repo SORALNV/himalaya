@@ -339,6 +339,12 @@ fn envelope_from(message: GmailMessage) -> Envelope {
     }
 
     Envelope {
+        received_at: message
+            .internal_date
+            .as_deref()
+            .and_then(|value| value.parse::<i64>().ok())
+            .and_then(chrono::DateTime::from_timestamp_millis)
+            .map(|value| value.fixed_offset()),
         id: message.id,
         message_id,
         in_reply_to,
@@ -507,4 +513,36 @@ fn parse_rfc2822(raw: &str) -> Option<DateTime<FixedOffset>> {
         return None;
     }
     DateTime::parse_from_rfc2822(trimmed).ok()
+}
+
+#[cfg(test)]
+mod receipt_tests {
+    use super::*;
+
+    #[test]
+    fn internal_date_is_separate_from_sender_date_and_legacy_json() {
+        let message: GmailMessage = serde_json::from_value(serde_json::json!({
+            "id": "fixture", "internalDate": "1800000000000",
+            "payload": {"headers": [{"name": "Date", "value": "Mon, 01 Jan 2001 00:00:00 +0000"}]}
+        }))
+        .unwrap();
+        let envelope = envelope_from(message);
+        assert_eq!(
+            envelope.received_at.unwrap().timestamp_millis(),
+            1800000000000
+        );
+        assert_ne!(envelope.received_at, envelope.date);
+        assert!(
+            serde_json::to_value(&envelope)
+                .unwrap()
+                .get("received_at")
+                .is_none()
+        );
+        assert!(
+            serde_json::to_value(&envelope)
+                .unwrap()
+                .get("received-at")
+                .is_none()
+        );
+    }
 }

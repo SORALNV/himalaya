@@ -99,9 +99,12 @@ fn is_default_msgraph_alpn(alpn: &[String]) -> bool {
 ///
 /// `deny_unknown_fields` is omitted so one file can be shared with
 /// himalaya-tui, whose own top-level fields are ignored here.
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Config {
+    /// Fork-only unified inbox defaults.
+    #[serde(default)]
+    pub inbox: InboxConfig,
     /// Fallback for [`AccountConfig::display_name`].
     #[serde(alias = "from-name")]
     pub display_name: Option<String>,
@@ -133,6 +136,14 @@ pub struct Config {
     pub account: AccountListingConfig,
     /// The named `[accounts.<name>]` blocks.
     pub accounts: HashMap<String, AccountConfig>,
+}
+
+/// Unified inbox defaults, overridden by command-line options.
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct InboxConfig {
+    /// Positive duration such as `30m`, absent for an unfiltered listing.
+    pub since: Option<String>,
 }
 
 impl TomlConfig for Config {
@@ -306,7 +317,7 @@ impl AccountConfig {
 /// `deny_unknown_fields` is omitted so a block written for one binary
 /// loads in the other: the CLI-only sub-blocks have to be tolerated by
 /// himalaya-tui, which models the rest.
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AccountConfig {
     /// Whether a command with no `-a/--account` runs against this one.
