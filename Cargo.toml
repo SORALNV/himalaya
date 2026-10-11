@@ -86,5 +86,8 @@ url = { version = "2.2", features = ["serde"] }
 [target.'cfg(windows)'.dependencies]
 uds_windows = "1"
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [patch.crates-io]
 pimalaya-config = { git = "https://github.com/SORALNV/config", rev = "12ed680559182516d7df56f5bc349f820e00c808" }

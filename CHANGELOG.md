@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed the named configuration wizard accepting special files or a replaced configuration during prompts. On macOS, ACL-bearing save targets are refused before writing generated credentials.
 - Fixed generated configuration files being readable by other users under a permissive umask on Unix. New files use mode 0600, new configuration directories use mode 0700, and appending restricts the file permissions.
 - Fixed decoded message bodies, headers and MIME metadata emitting terminal control or bidi characters in the human-readable view. JSON and explicitly requested raw output remain unchanged.
 - Fixed attachment downloads following dangling symlinks or overwriting existing files after filename suffixes are exhausted. Concurrent downloads now reserve filenames exclusively.
