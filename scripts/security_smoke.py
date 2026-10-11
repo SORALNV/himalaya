@@ -9,6 +9,7 @@ from pathlib import Path
 import pty
 import select
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -76,7 +77,7 @@ def main():
             label = "plain" if not flags else flags[-1].lstrip("-")
             check(f"failed_helper_redacted_{label}", output.returncode != 0 and b"SECRET_SMOKE_MARKER" not in emitted and b"STDERR_SMOKE_MARKER" not in emitted)
 
-        def terminal(arguments, wizard=False):
+        def terminal(arguments, wizard=False, before_save=None):
             master, slave = pty.openpty()
             process = subprocess.Popen([str(binary), *map(str, arguments)], stdin=slave, stdout=slave, stderr=slave, preexec_fn=lambda: os.umask(0o022))
             os.close(slave)
@@ -99,6 +100,8 @@ def main():
                             os.write(master, str(root / "wizard-mail").encode() + b"\r")
                             answered = True
                         if wizard and not saved and (b"Save this account" in captured or b"Append account" in captured):
+                            if before_save is not None:
+                                before_save()
                             os.write(master, b"\r")
                             saved = True
                     if process.poll() is not None:
@@ -125,6 +128,46 @@ def main():
             check("wizard_append_restricts_config", code == 0 and generated.stat().st_mode & 0o777 == 0o600 and generated.read_bytes().startswith(previous) and len(generated.read_bytes()) > len(previous))
         else:
             check("wizard_append_restricts_config", False)
+
+        fifo = root / "fifo.toml"
+        os.mkfifo(fifo, 0o600)
+        code, emitted = terminal(["-c", fifo, "configure"], wizard=True)
+        check("wizard_rejects_initial_fifo", code > 0 and b"not a regular file" in emitted)
+
+        if generated.exists():
+            replacement = root / "replacement.toml"
+            replacement.write_bytes(generated.read_bytes())
+
+            def replace_config():
+                replacement.unlink()
+                replacement.write_text("# replaced while prompting\n")
+
+            code, emitted = terminal(["-c", replacement, "configure"], wizard=True, before_save=replace_config)
+            check("wizard_rejects_replaced_config", code > 0 and b"replaced while prompting" in emitted and replacement.read_bytes() == b"# replaced while prompting\n")
+            replacement.write_bytes(generated.read_bytes())
+
+            def replace_with_fifo():
+                replacement.unlink()
+                os.mkfifo(replacement, 0o600)
+
+            code, emitted = terminal(["-c", replacement, "configure"], wizard=True, before_save=replace_with_fifo)
+            check("wizard_rejects_fifo_substituted_during_prompt", code > 0 and b"not a regular file" in emitted and replacement.is_fifo())
+
+            if sys.platform == "darwin":
+                acl_config = root / "acl.toml"
+                previous = generated.read_bytes()
+                acl_config.write_bytes(previous)
+                subprocess.run(["/bin/chmod", "+a", "everyone allow read", str(acl_config)], check=True, timeout=5)
+                code, emitted = terminal(["-c", acl_config, "configure"], wizard=True)
+                check("wizard_rejects_explicit_acl", code > 0 and b"has an ACL" in emitted and acl_config.read_bytes() == previous)
+                acl_parent = root / "acl-parent"
+                acl_parent.mkdir()
+                subprocess.run(["/bin/chmod", "+a", "everyone allow read,search,file_inherit,directory_inherit", str(acl_parent)], check=True, timeout=5)
+                acl_new = acl_parent / "config.toml"
+                code, emitted = terminal(["-c", acl_new, "configure"], wizard=True)
+                check("wizard_rejects_inherited_acl", code > 0 and b"has an ACL" in emitted and acl_new.exists() and acl_new.read_bytes() == b"")
+        else:
+            check("wizard_target_validation_prerequisite", False)
 
     print(json.dumps(results, indent=2))
     return 0 if all(value == "PASS" for value in results.values()) else 1
