@@ -70,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `message compose`, `reply` and `forward` writing a `Message-ID` on the hostname of the machine (`<…@myhost>`), which disclosed it to every recipient. The id now sits on the domain of the `From` address; without one, or with a domain that is not a plain dot-atom, the hostname is still used.
 - Fixed the plain output of `flag add`, `flag set`, `flag remove` and `message delete` not ending with a newline ([#777]).
 - Fixed a raw message piped on stdin (`message send`, `message add`, `smtp send`, every `save`, `import` and `insert`) being cut at its first line that is not valid UTF-8 and still reported as sent or saved, or refused as empty when that line was the first. Stdin and message files are now read whole as bytes, so a message in another 8-bit charset goes through intact. `imap raw` and `smtp raw` read stdin whole too and refuse invalid UTF-8 rather than truncating ([#786]).
+- Fixed `message compose`, `reply` and `forward` writing a `Message-ID` on the hostname of the machine (`<…@myhost>`), which disclosed it to every recipient. The id now sits on the domain of the `From` address; without one, or with a domain that is not a plain dot-atom, the hostname is still used.
 
 ## [2.2.1] - 2026-10-02
 
