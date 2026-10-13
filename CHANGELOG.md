@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed attachment downloads following dangling symlinks or overwriting existing files after filename suffixes are exhausted. Concurrent downloads now reserve filenames exclusively.
 - Fixed control and bidi characters from messages and servers reaching the terminal through the plain output.
 - Fixed pimdir queue details leaking into the shared outputs: `envelope list` no longer reports a `queued` count, and `message send`, `message add --send` and the composers no longer print a `queueId`. `himalaya pimdir queue list` shows what is queued, and a queued send logs its row id at info level.
+- Fixed `message move` on an IMAP server without MOVE whose `COPYUID` cannot be read, such as Mailo's UIDVALIDITY 0: the message was copied, left in the source and reported as not found. Without a readable `COPYUID`, `message copy` and `message move` now count the requested UIDs a `UID SEARCH` finds in the source, so a message that no longer exists is still reported as not found ([#781]).
 
 ## [2.2.1] - 2026-10-02
 
