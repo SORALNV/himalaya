@@ -74,6 +74,9 @@ pub struct SourceArgs<'a> {
     pub own_email: Option<&'a str>,
 }
 
+/// A mailbox: its display name, when it carries one, and its address.
+type Mailbox = (Option<String>, String);
+
 /// Whether the source message is being replied to or forwarded.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SourceMode {
@@ -124,11 +127,26 @@ pub fn build(args: BuilderArgs<'_>, source: Option<SourceArgs<'_>>) -> Result<Ve
             });
         }
 
-        if source.mode == SourceMode::Reply
-            && args.to.is_empty()
-            && let Some(addrs) = reply_recipients(parsed)
-        {
-            builder = builder.to(addrs);
+        if source.mode == SourceMode::Reply {
+            let derived = match args.to.is_empty() {
+                true => reply_recipients(parsed),
+                false => Vec::new(),
+            };
+            if !derived.is_empty() {
+                builder = builder.to(address_list(&derived));
+            }
+
+            if source.reply_all && args.cc.is_empty() {
+                let mut to: Vec<String> = derived.into_iter().map(|(_, email)| email).collect();
+                for value in args.to {
+                    to.extend(parse_mailboxes(value)?.into_iter().map(|(_, email)| email));
+                }
+
+                let cc = reply_all_cc(parsed, &to, source.own_email);
+                if !cc.is_empty() {
+                    builder = builder.cc(address_list(&cc));
+                }
+            }
         }
 
         if let Some(message_id) = parsed.message_id() {
@@ -429,43 +447,73 @@ fn has_prefix(subject: &str, prefix: &str) -> bool {
 
 /// Derives the recipients of a reply from the source's `Reply-To`, or
 /// from its `From` when it names none.
-fn reply_recipients(msg: &mail_parser::Message<'_>) -> Option<Address<'static>> {
+fn reply_recipients(msg: &mail_parser::Message<'_>) -> Vec<Mailbox> {
+    msg.header("Reply-To")
+        .or_else(|| msg.header("From"))
+        .map(header_mailboxes)
+        .unwrap_or_default()
+}
+
+/// Derives the carbon-copy recipients of a reply to all: the `To` and
+/// `Cc` of the source, without the account's own address nor anyone
+/// already in `to`, and without duplicates, compared ignoring case.
+fn reply_all_cc(msg: &mail_parser::Message<'_>, to: &[String], own: Option<&str>) -> Vec<Mailbox> {
+    let mut seen: Vec<String> = to
+        .iter()
+        .map(String::as_str)
+        .chain(own)
+        .map(|email| email.trim().to_ascii_lowercase())
+        .collect();
+    let mut cc = Vec::new();
+
+    for name in ["To", "Cc"] {
+        for (display, email) in msg.header(name).map(header_mailboxes).unwrap_or_default() {
+            let key = email.trim().to_ascii_lowercase();
+            if !seen.contains(&key) {
+                seen.push(key);
+                cc.push((display, email));
+            }
+        }
+    }
+
+    cc
+}
+
+/// Collects the mailboxes of an address header, groups flattened and
+/// entries without an address dropped.
+fn header_mailboxes(value: &HeaderValue<'_>) -> Vec<Mailbox> {
     use mail_parser::Address as ParserAddress;
 
-    let header = msg
-        .header("Reply-To")
-        .or_else(|| msg.header("From"))
-        .cloned();
-
-    let HeaderValue::Address(addr) = header? else {
-        return None;
+    let HeaderValue::Address(addr) = value else {
+        return Vec::new();
     };
 
-    let collected: Vec<Address<'static>> = match addr {
-        ParserAddress::List(list) => list
-            .into_iter()
-            .filter_map(|a| {
-                let email = a.address?.into_owned();
-                let name = a.name.map(|s| s.into_owned());
-                Some(Address::new_address(name, email))
-            })
-            .collect(),
+    let entries: Vec<_> = match addr {
+        ParserAddress::List(list) => list.iter().collect(),
         ParserAddress::Group(groups) => groups
-            .into_iter()
-            .flat_map(|g| g.addresses.into_iter())
-            .filter_map(|a| {
-                let email = a.address?.into_owned();
-                let name = a.name.map(|s| s.into_owned());
-                Some(Address::new_address(name, email))
-            })
+            .iter()
+            .flat_map(|group| group.addresses.iter())
             .collect(),
     };
 
-    if collected.is_empty() {
-        None
-    } else {
-        Some(Address::new_list(collected))
-    }
+    entries
+        .into_iter()
+        .filter_map(|entry| {
+            let email = entry.address.as_ref()?.to_string();
+            let name = entry.name.as_ref().map(|name| name.to_string());
+            Some((name, email))
+        })
+        .collect()
+}
+
+/// Turns mailboxes into the address list a header carries.
+fn address_list(mailboxes: &[Mailbox]) -> Address<'static> {
+    Address::new_list(
+        mailboxes
+            .iter()
+            .map(|(name, email)| Address::new_address(name.clone(), email.clone()))
+            .collect(),
+    )
 }
 
 /// Builds the `References` header of a reply: the source's own chain,

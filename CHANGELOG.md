@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Fork only: bounded read-only `inbox scan` with server INTERNALDATE candidate search, exact receipt windows, fixed UID snapshot continuations, incremental checkpoints, deferred future receipts and safe coverage/error metadata. The paired OpenMausBot wrapper isolates accounts, classifies process limits and offers private metadata-only monitoring with explicit acknowledgement.
+- Added `--all` (`-A`) to `message reply`, replying to everyone: `To` stays the source's `Reply-To` or `From`, and `Cc` takes the `To` and `Cc` of the source without the account's `email` nor anyone already in `To`, each address once. An explicit `--to` or `--cc` takes precedence over the list it would derive ([#779]).
 
 - Added explicit macOS fork-only MPRG legacy STARTTLS with same-connection leaf pin verification before authentication, endpoint restrictions, a total handshake deadline and a consent-bound Web preset. Other accounts retain their ordinary TLS defaults.
 - Added fork-only macOS `configure --web` for local Gmail/Google Workspace and iCloud setup, with explicit authentication checks, native Keychain storage, authenticated short-lived browser sessions and guarded configuration appends. Added cooperating-writer locking and save/revocation coordination without changing terminal discovery behavior.
@@ -1440,6 +1441,9 @@ Few major concepts changed:
 [#774]: https://github.com/pimalaya/himalaya/pull/774
 [#775]: https://github.com/pimalaya/himalaya/issues/775
 [#780]: https://github.com/pimalaya/himalaya/issues/780
+[#779]: https://github.com/pimalaya/himalaya/issues/779
+[#781]: https://github.com/pimalaya/himalaya/issues/781
+[#786]: https://github.com/pimalaya/himalaya/issues/786
 
 [core#1]: https://github.com/pimalaya/core/issues/1
 [core#10]: https://github.com/pimalaya/core/issues/10
