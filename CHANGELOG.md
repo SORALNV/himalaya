@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Fork only: bounded read-only `inbox scan` with server INTERNALDATE candidate search, exact receipt windows, fixed UID snapshot continuations, incremental checkpoints, deferred future receipts and safe coverage/error metadata. The paired OpenMausBot wrapper isolates accounts, classifies process limits and offers private metadata-only monitoring with explicit acknowledgement.
+- Added `msgraph messages send-draft <ID>`, sending an existing Microsoft Graph draft (`POST /me/messages/{id}/send`), which Graph moves to Sent Items ([#787]).
 - Added `--all` (`-A`) to `message reply`, replying to everyone: `To` stays the source's `Reply-To` or `From`, and `Cc` takes the `To` and `Cc` of the source without the account's `email` nor anyone already in `To`, each address once. An explicit `--to` or `--cc` takes precedence over the list it would derive ([#779]).
 
 - Added explicit macOS fork-only MPRG legacy STARTTLS with same-connection leaf pin verification before authentication, endpoint restrictions, a total handshake deadline and a consent-bound Web preset. Other accounts retain their ordinary TLS defaults.
@@ -1444,6 +1445,7 @@ Few major concepts changed:
 [#780]: https://github.com/pimalaya/himalaya/issues/780
 [#778]: https://github.com/pimalaya/himalaya/issues/778
 [#779]: https://github.com/pimalaya/himalaya/issues/779
+[#787]: https://github.com/pimalaya/himalaya/issues/787
 [#781]: https://github.com/pimalaya/himalaya/issues/781
 [#786]: https://github.com/pimalaya/himalaya/issues/786
 
