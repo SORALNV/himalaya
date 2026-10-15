@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed the named configuration wizard accepting special files or a replaced configuration during prompts. On macOS, ACL-bearing save targets are refused before writing generated credentials.
 - Fixed generated configuration files being readable by other users under a permissive umask on Unix. New files use mode 0600, new configuration directories use mode 0700, and appending restricts the file permissions.
+- Fixed Maildir mailboxes being named by their last path segment, so `Archive` and `[Gmail]/Archive` both listed as `Archive`: `mailbox list` and `maildir list` now name them by their path relative to `maildir.root`, the name `-m` takes, in both layouts ([himalaya-tui#22](https://github.com/pimalaya/himalaya-tui/issues/22)).
 - Fixed decoded message bodies, headers and MIME metadata emitting terminal control or bidi characters in the human-readable view. JSON and explicitly requested raw output remain unchanged.
 - Fixed attachment downloads following dangling symlinks or overwriting existing files after filename suffixes are exhausted. Concurrent downloads now reserve filenames exclusively.
 - Fixed control and bidi characters from messages and servers reaching the terminal through the plain output.
