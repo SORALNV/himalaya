@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed the pimdir writes to be refused before they are queued when a source of the store does not support them, naming the capability, the source and why, and a send to be refused while several sources can send and none is chosen. A write a source supports only in part logs a warning.
 - Changed a pimdir send asking for a copy to carry it in the queued send, so the copy is filed only once the message is sent; a store whose owner declares no capabilities still gets the copy queued beside the send.
 - Changed `flag add`, `flag set`, `flag remove`, `message move`, `message copy` and `message delete` (when it moves to the trash) to fail, exit code 1, when none of the given ids exists in the mailbox. Over IMAP the flag commands reported a success for such an id, and `message move` and `message copy` exited 0 on "no id matched". The flag commands now report how many messages they found, as `count` under `--json` ([#777]).
+- Bumped rustls to 0.23.46, fixing RUSTSEC-2026-0346 to RUSTSEC-2026-0349: TLS secrets exposed by `Debug`, a downgrade to classical key exchange, and an unbounded certificate decompression.
 
 ### Fixed
 
