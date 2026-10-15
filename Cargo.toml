@@ -105,3 +105,4 @@ zeroize = { version = "1.9", features = ["serde"], optional = true }
 [patch.crates-io]
 pimalaya-stream = { path = "vendor/pimalaya-stream" }
 pimalaya-config = { git = "https://github.com/SORALNV/config", rev = "12ed680559182516d7df56f5bc349f820e00c808" }
+pimalaya-cli = { git = "https://github.com/pimalaya/cli", rev = "e4ea7f4067501d2159889a926c6f5449778c38df" }
