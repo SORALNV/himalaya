@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the `pimdir performer` command, showing which sources can perform a capability such as `mail.submit` for the account and recording the user's choice among them (pimdir draft-03, STORAGE §15.6).
 - Added `--notify`, `--ret` and `--envid` to `smtp send`, requesting delivery status notifications (RFC 3461). The command fails when the server does not announce `DSN` ([#775]).
 - Added the source's attachments to `message forward`, carried under their file names after the quoted body. Nameless ones are named from their subject (`.eml`) or MIME type. `--no-attachments` leaves them out ([#780]).
+- Added the `answered` flag to the source of `message reply --send` and the `forwarded` flag to the source of `message forward --send` once the message is sent, so it shows as replied to or forwarded in `envelope list` and in other clients. A message only printed or saved flags nothing, and a backend refusing the `$Forwarded` keyword does not fail the forward ([#778]).
 
 ### Changed
 
@@ -1441,6 +1442,7 @@ Few major concepts changed:
 [#774]: https://github.com/pimalaya/himalaya/pull/774
 [#775]: https://github.com/pimalaya/himalaya/issues/775
 [#780]: https://github.com/pimalaya/himalaya/issues/780
+[#778]: https://github.com/pimalaya/himalaya/issues/778
 [#779]: https://github.com/pimalaya/himalaya/issues/779
 [#781]: https://github.com/pimalaya/himalaya/issues/781
 [#786]: https://github.com/pimalaya/himalaya/issues/786
