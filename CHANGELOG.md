@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed the size `attachment list` reports, and the bytes `attachment download` writes, to be the part's bytes once its transfer encoding is undone, in its own charset: a text attachment is no longer converted to UTF-8, and an attached message is written alone rather than with the whole message holding it.
 - Changed the pimdir writes to be refused before they are queued when a source of the store does not support them, naming the capability, the source and why, and a send to be refused while several sources can send and none is chosen. A write a source supports only in part logs a warning.
 - Changed a pimdir send asking for a copy to carry it in the queued send, so the copy is filed only once the message is sent; a store whose owner declares no capabilities still gets the copy queued beside the send.
+- Changed `flag add`, `flag set`, `flag remove`, `message move`, `message copy` and `message delete` (when it moves to the trash) to fail, exit code 1, when none of the given ids exists in the mailbox. Over IMAP the flag commands reported a success for such an id, and `message move` and `message copy` exited 0 on "no id matched". The flag commands now report how many messages they found, as `count` under `--json` ([#777]).
 
 ### Fixed
 
@@ -58,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed control and bidi characters from messages and servers reaching the terminal through the plain output.
 - Fixed pimdir queue details leaking into the shared outputs: `envelope list` no longer reports a `queued` count, and `message send`, `message add --send` and the composers no longer print a `queueId`. `himalaya pimdir queue list` shows what is queued, and a queued send logs its row id at info level.
 - Fixed `message move` on an IMAP server without MOVE whose `COPYUID` cannot be read, such as Mailo's UIDVALIDITY 0: the message was copied, left in the source and reported as not found. Without a readable `COPYUID`, `message copy` and `message move` now count the requested UIDs a `UID SEARCH` finds in the source, so a message that no longer exists is still reported as not found ([#781]).
+- Fixed the plain output of `flag add`, `flag set`, `flag remove` and `message delete` not ending with a newline ([#777]).
 
 ## [2.2.1] - 2026-10-02
 
@@ -1444,6 +1446,7 @@ Few major concepts changed:
 [#774]: https://github.com/pimalaya/himalaya/pull/774
 [#775]: https://github.com/pimalaya/himalaya/issues/775
 [#780]: https://github.com/pimalaya/himalaya/issues/780
+[#777]: https://github.com/pimalaya/himalaya/issues/777
 [#778]: https://github.com/pimalaya/himalaya/issues/778
 [#779]: https://github.com/pimalaya/himalaya/issues/779
 [#787]: https://github.com/pimalaya/himalaya/issues/787
