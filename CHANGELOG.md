@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `pimdir mailbox create <NAME>`, queueing a `collection-create` intent for the sync engine to create the mailbox on its server.
 - Added the `pimdir performer` command, showing which sources can perform a capability such as `mail.submit` for the account and recording the user's choice among them (pimdir draft-03, STORAGE §15.6).
 - Added `--notify`, `--ret` and `--envid` to `smtp send`, requesting delivery status notifications (RFC 3461). The command fails when the server does not announce `DSN` ([#775]).
+- Added the source's attachments to `message forward`, carried under their file names after the quoted body. Nameless ones are named from their subject (`.eml`) or MIME type. `--no-attachments` leaves them out ([#780]).
 
 ### Changed
 
@@ -1438,6 +1439,7 @@ Few major concepts changed:
 [#772]: https://github.com/pimalaya/himalaya/issues/772
 [#774]: https://github.com/pimalaya/himalaya/pull/774
 [#775]: https://github.com/pimalaya/himalaya/issues/775
+[#780]: https://github.com/pimalaya/himalaya/issues/780
 
 [core#1]: https://github.com/pimalaya/core/issues/1
 [core#10]: https://github.com/pimalaya/core/issues/10

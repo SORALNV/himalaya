@@ -17,9 +17,9 @@ use mail_builder::{
     MessageBuilder,
     headers::{address::Address, raw::Raw},
 };
-use mail_parser::{HeaderValue, MessageParser, parsers::MessageStream};
+use mail_parser::{HeaderValue, MessageParser, PartType, parsers::MessageStream};
 
-use crate::config::PostingStyle;
+use crate::{config::PostingStyle, shared::message::part};
 
 /// Everything the MIME assembler needs, which each command fills in from
 /// its own clap struct.
@@ -65,6 +65,13 @@ pub struct SourceArgs<'a> {
     pub posting_style: PostingStyle,
     /// The headline placed before its quoted body.
     pub quote_headline: &'a str,
+    /// Whether the attachments of the source are left out of a
+    /// forward, the quoting being all a reply ever took.
+    pub no_attachments: bool,
+    /// Whether a reply also goes to the other recipients of the source.
+    pub reply_all: bool,
+    /// The account's own address, left out of a reply to all.
+    pub own_email: Option<&'a str>,
 }
 
 /// Whether the source message is being replied to or forwarded.
@@ -171,9 +178,85 @@ pub fn build(args: BuilderArgs<'_>, source: Option<SourceArgs<'_>>) -> Result<Ve
         builder = builder.attachment(mime, file_name, bytes);
     }
 
+    if let (Some(source), Some(parsed)) = (source.as_ref(), parsed_source.as_ref())
+        && source.mode == SourceMode::Forward
+        && !source.no_attachments
+    {
+        builder = carry_source_attachments(builder, parsed);
+    }
+
     builder
         .write_to_vec()
         .map_err(|err| anyhow!("serialize composed message: {err}"))
+}
+
+/// Carries the attachments of the source into the forward, each under
+/// its original or derived file name, leaving bodies and inline
+/// resources to the quoting.
+fn carry_source_attachments<'a>(
+    builder: MessageBuilder<'a>,
+    parsed: &mail_parser::Message<'_>,
+) -> MessageBuilder<'a> {
+    let mut builder = builder;
+
+    for part in &parsed.parts {
+        // NOTE: a multipart container is not a leaf part: it holds no
+        // bytes of its own, and a `name` attribute on it would pass the
+        // attachment role fallthrough, so skip containers before the
+        // role check.
+        if matches!(&part.body, PartType::Multipart(_)) {
+            continue;
+        }
+        if part::role(parsed, part) != part::PartRole::Attachment {
+            continue;
+        }
+        let mime = part::mime(part);
+        let file_name =
+            part::filename(parsed, part).unwrap_or_else(|| fallback_attachment_name(part, &mime));
+        let bytes = part::bytes(parsed, part).into_owned();
+        builder = builder.attachment(mime, file_name, bytes);
+    }
+
+    builder
+}
+
+/// Names an attached email from its subject, or a file from its MIME type.
+fn fallback_attachment_name(part: &mail_parser::MessagePart<'_>, mime: &str) -> String {
+    if mime == "message/rfc822" || part.is_message() {
+        let subject = match &part.body {
+            PartType::Message(message) => message.subject().unwrap_or_default(),
+            _ => "",
+        };
+        let subject: String = subject
+            .chars()
+            .map(|c| {
+                if c.is_control()
+                    || matches!(c, '/' | '\\' | ':' | '"' | '<' | '>' | '|' | '?' | '*')
+                {
+                    '_'
+                } else {
+                    c
+                }
+            })
+            .collect();
+        let subject = subject.trim_matches(|c: char| c == '.' || c.is_whitespace());
+        let stem = if subject.is_empty() {
+            "attachment"
+        } else {
+            subject
+        };
+        return format!("{stem}.eml");
+    }
+
+    let extension = if mime == "application/octet-stream" {
+        Some("bin")
+    } else {
+        mime_guess::get_mime_extensions_str(mime).and_then(|exts| exts.first().copied())
+    };
+    match extension {
+        Some(ext) => format!("attachment.{ext}"),
+        None => "attachment".to_string(),
+    }
 }
 
 /// Splits an address list into its mailboxes, each with its display
@@ -469,6 +552,9 @@ Original body line.\r\n";
             mode,
             posting_style: PostingStyle::Top,
             quote_headline: "On a day, Alice wrote:",
+            no_attachments: true,
+            reply_all: false,
+            own_email: None,
         }
     }
 
@@ -554,6 +640,9 @@ Original body line.\r\n";
             mode: SourceMode::Reply,
             posting_style: PostingStyle::Top,
             quote_headline: "",
+            no_attachments: true,
+            reply_all: false,
+            own_email: None,
         };
         let empty: Vec<String> = Vec::new();
         let built = build(args("b@e", &empty, None, "r"), Some(src)).unwrap();
@@ -568,6 +657,9 @@ Original body line.\r\n";
             mode: SourceMode::Reply,
             posting_style: PostingStyle::Top,
             quote_headline: "",
+            no_attachments: true,
+            reply_all: false,
+            own_email: None,
         };
         let empty: Vec<String> = Vec::new();
         let built = build(args("b@e", &empty, None, "r"), Some(src)).unwrap();
@@ -585,6 +677,119 @@ Original body line.\r\n";
         let text = String::from_utf8(raw).unwrap();
         assert!(text.contains("dave@example.com"));
         assert!(!text.contains("alice@example.com"));
+    }
+
+    /// A source with several `To` and `Cc` recipients, the account's own
+    /// address and a repeat among them, and a `Reply-To` of its own.
+    const GROUP_SOURCE: &[u8] = b"From: Alice <alice@example.com>\r\n\
+Reply-To: Lists <lists@example.com>\r\n\
+To: Bob <bob@example.com>, \"Carol, C\" <CAROL@example.com>, me@example.com\r\n\
+Cc: bob@example.com, Dave <dave@example.com>, Me <ME@Example.com>\r\n\
+Subject: Plan\r\n\
+Message-ID: <plan@example.com>\r\n\
+\r\n\
+Body.\r\n";
+
+    /// Builds a reply to [`GROUP_SOURCE`] and returns its `To` and `Cc`
+    /// addresses.
+    fn reply_lists(reply_all: bool, to: &[String], cc: &[String]) -> (Vec<String>, Vec<String>) {
+        let mut a = args("me@example.com", to, None, "r");
+        a.cc = cc;
+        let source = SourceArgs {
+            raw: GROUP_SOURCE,
+            mode: SourceMode::Reply,
+            posting_style: PostingStyle::Top,
+            quote_headline: "",
+            no_attachments: true,
+            reply_all,
+            own_email: Some("me@example.com"),
+        };
+
+        let raw = build(a, Some(source)).unwrap();
+        let msg = parse(&raw);
+        let emails = |name: &str| {
+            msg.header(name)
+                .map(header_mailboxes)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(_, email)| email)
+                .collect()
+        };
+
+        (emails("To"), emails("Cc"))
+    }
+
+    #[test]
+    fn reply_without_all_leaves_cc_empty() {
+        let (to, cc) = reply_lists(false, &[], &[]);
+        assert_eq!(to, ["lists@example.com"]);
+        assert!(cc.is_empty());
+    }
+
+    #[test]
+    fn reply_all_copies_the_other_recipients_once() {
+        let (to, cc) = reply_lists(true, &[], &[]);
+        assert_eq!(to, ["lists@example.com"]);
+        assert_eq!(
+            cc,
+            ["bob@example.com", "CAROL@example.com", "dave@example.com"]
+        );
+    }
+
+    #[test]
+    fn reply_all_keeps_the_display_names() {
+        let raw = build(
+            args("me@example.com", &[], None, "r"),
+            Some(SourceArgs {
+                raw: GROUP_SOURCE,
+                mode: SourceMode::Reply,
+                posting_style: PostingStyle::Top,
+                quote_headline: "",
+                no_attachments: true,
+                reply_all: true,
+                own_email: Some("me@example.com"),
+            }),
+        )
+        .unwrap();
+        let text = String::from_utf8(raw).unwrap();
+
+        assert!(text.contains("\"Carol, C\" <CAROL@example.com>"), "{text}");
+    }
+
+    #[test]
+    fn reply_all_leaves_out_who_is_already_in_to() {
+        let msg = MessageParser::new().parse(GROUP_SOURCE).unwrap();
+        let to = vec!["bob@example.com".to_string()];
+
+        let cc: Vec<_> = reply_all_cc(&msg, &to, Some("me@example.com"))
+            .into_iter()
+            .map(|(_, email)| email)
+            .collect();
+
+        assert_eq!(cc, ["CAROL@example.com", "dave@example.com"]);
+    }
+
+    #[test]
+    fn reply_all_with_explicit_to_dedupes_against_it() {
+        let to = vec!["Dave <dave@example.com>".to_string()];
+        let (to, cc) = reply_lists(true, &to, &[]);
+        assert_eq!(to, ["dave@example.com"]);
+        assert_eq!(cc, ["bob@example.com", "CAROL@example.com"]);
+    }
+
+    #[test]
+    fn reply_all_explicit_cc_wins() {
+        let cc = vec!["erin@example.com".to_string()];
+        let (to, cc) = reply_lists(true, &[], &cc);
+        assert_eq!(to, ["lists@example.com"]);
+        assert_eq!(cc, ["erin@example.com"]);
+    }
+
+    #[test]
+    fn reply_all_without_own_email_keeps_every_recipient() {
+        let msg = MessageParser::new().parse(GROUP_SOURCE).unwrap();
+        let cc = reply_all_cc(&msg, &[], None);
+        assert_eq!(cc.len(), 4);
     }
 
     #[test]
