@@ -98,9 +98,6 @@ A command both saving and sending (`--save` with `--send`, `message send --save`
 ### Requirement: A sent reply or forward flags its source
 `message reply --send` SHALL add the `answered` flag (RFC 3501 §2.3.2) to the source message once the send has succeeded. A flag failing after a successful send SHALL fail the command with an error stating that the message was sent. `message forward --send` SHALL add the `forwarded` flag (RFC 5788) to the source the same way, best-effort: a backend refusing the keyword SHALL be logged as a warning and SHALL NOT fail the command. A reply or forward only printed or saved SHALL leave the source untouched.
 
-### Requirement: Reply to all recipients
-`message reply --all` (`-A`) SHALL keep the `To` of a plain reply and fill `Cc` with the `To` and `Cc` of the source, without the account's `email` and without any address already in `To`, each address once, compared ignoring case, display names kept. An explicit `--to` SHALL replace the derived `To`, the `Cc` then being deduplicated against it, and an explicit `--cc` SHALL replace the derived `Cc` whole. Without `--all`, `Cc` SHALL stay empty unless `--cc` fills it.
-
 ### Requirement: A forward carries the attachments of its source
 `message forward` SHALL append every attachment part of the source (multipart containers excluded) after the quoted body, under its file name, with its MIME type and decoded bytes, the quoted body composing as it does without them. A nameless `message/rfc822` part SHALL be named from its subject, sanitized for the filesystem, plus `.eml`, or `attachment.eml`; any other nameless part SHALL be named `attachment` plus the extension of its MIME type (`.bin` for `application/octet-stream`), or bare `attachment`. `--no-attachments` SHALL carry none and combines with `--attach`. A reply SHALL never carry the attachments of its source.
 
