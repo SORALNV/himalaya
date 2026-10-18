@@ -331,6 +331,16 @@ mailbox.alias.sent = "Sent Messages"
 
 Every command carries its own `--help`, the source of truth for its flags and syntax. The snippets below are a taste of the surface.
 
+### Bounded receipt scans (fork only)
+
+```sh
+himalaya --json -a ACCOUNT inbox scan --since 30m
+himalaya --json -a ACCOUNT inbox scan --cursor TOKEN
+himalaya --json -a ACCOUNT inbox scan --after CHECKPOINT
+```
+
+This IMAP-only consumer path uses server receipt time, a fixed UID/time snapshot and read-only summaries. Defaults are 25 summaries per fetch, at most four fetches and 128 KiB of JSON. Check `complete` and retain `next_cursor` until coverage is complete; never infer no new mail from a partial response. `cursor` replays the start of the current batch; `checkpoint` starts a new incremental round after successful processing. `deferred=true` means a future-dated receipt was excluded and the checkpoint was held back for a later round, which can replay subsequent UIDs. Deduplicate by account, mailbox, UIDVALIDITY and UID when needed. Candidate UID discovery is a server SEARCH, not a hard memory-bounded stream. Existing cross-backend `inbox list` remains available. See [the scan contract](cairn/spec/inbox-scan.md).
+
 ### Shared API
 
 Backend-agnostic commands run on the account's first configured backend, or the one picked with `-b/--backend`. `-m/--mailbox` takes a mailbox id, name, alias or role (`inbox`, `sent`, `drafts`, `trash`...), and defaults to the inbox.

@@ -20,11 +20,17 @@ use crate::{
     shared::{client::EmailClient, envelope::list::format_addresses, mailbox::arg::MailboxArg},
 };
 
+#[cfg(feature = "imap")]
+pub mod scan;
+
 /// Fork-only inbox commands.
 #[derive(Debug, Subcommand)]
 pub enum InboxCommand {
     /// Merge configured inboxes; global `-a NAME` selects one account.
     List(InboxListCommand),
+    /// Scan one IMAP inbox in bounded, resumable receipt-time batches.
+    #[cfg(feature = "imap")]
+    Scan(scan::InboxScanCommand),
 }
 
 /// List summaries without fetching bodies or changing Seen flags.
@@ -112,7 +118,11 @@ impl InboxCommand {
         selected: Option<&str>,
         backend: Backend,
     ) -> Result<()> {
-        let Self::List(cmd) = self;
+        let cmd = match self {
+            Self::List(cmd) => cmd,
+            #[cfg(feature = "imap")]
+            Self::Scan(cmd) => return cmd.execute(printer, paths, selected, backend),
+        };
         let mut config = Config::from_paths_or_default(paths)?.context("No configuration found")?;
         let mut names: Vec<String> = config.accounts.keys().cloned().collect();
         names.sort();

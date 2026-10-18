@@ -28,6 +28,10 @@ Account errors SHALL not discard summaries from successful accounts. Plain outpu
 
 Coverage SHALL not promise an atomic snapshot across servers or changing mailboxes. Concurrent mailbox changes MAY shift pages even when no overlap is detected.
 
+### Requirement: Bounded IMAP consumer path
+
+The separate fork-only `inbox scan` SHALL provide fixed UID/time snapshots, server-side receipt-date candidate search, exact INTERNALDATE filtering, bounded fetch/output batches, resumable cursors and completed incremental checkpoints as defined in `inbox-scan.md`. Existing cross-backend `inbox list` behavior SHALL remain available; its larger historical defaults SHALL NOT be used as the normal read-only wrapper monitoring strategy.
+
 ### Requirement: Fork isolation
 
 This capability and subsequent custom features SHALL remain only in SORALNV/himalaya unless the user changes that policy. Existing upstream security PRs SHALL not receive custom features.

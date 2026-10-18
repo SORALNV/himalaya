@@ -462,7 +462,7 @@ fn apply_status(mailbox: &mut Mailbox, items: Vec<StatusDataItem>) {
 
 /// The `FETCH` item names a listing asks for, `BODYSTRUCTURE` included
 /// only when the attachment column is drawn.
-fn build_item_names(with_attachment: bool) -> MacroOrMessageDataItemNames<'static> {
+pub(crate) fn build_item_names(with_attachment: bool) -> MacroOrMessageDataItemNames<'static> {
     let mut names = vec![
         MessageDataItemName::Uid,
         MessageDataItemName::InternalDate,
@@ -499,7 +499,7 @@ fn compute_window(exists: u32, page: Option<u32>, page_size: Option<u32>) -> Opt
 }
 
 /// Folds one `FETCH` row into a shared [`Envelope`].
-fn envelope_from(seq: u32, items: Vec<MessageDataItem<'static>>) -> Envelope {
+pub(crate) fn envelope_from(seq: u32, items: Vec<MessageDataItem<'static>>) -> Envelope {
     let mut id = String::new();
     let mut message_id: Option<String> = None;
     let mut in_reply_to = Vec::new();
@@ -669,7 +669,7 @@ fn sanitise_atom(raw: &str) -> String {
 }
 
 /// Parses a shared mailbox name into an IMAP Mailbox token.
-fn parse_mailbox(name: &str) -> Result<ImapMailbox<'static>> {
+pub(crate) fn parse_mailbox(name: &str) -> Result<ImapMailbox<'static>> {
     String::from(name)
         .try_into()
         .map_err(|_| anyhow!("Invalid IMAP mailbox `{name}`"))
@@ -686,7 +686,7 @@ fn parse_uids(ids: &[&str]) -> Result<SequenceSet> {
 }
 
 /// Builds an IMAP [`SequenceSet`] from numeric UIDs.
-fn uid_sequence_set(uids: Vec<u32>) -> Result<SequenceSet> {
+pub(crate) fn uid_sequence_set(uids: Vec<u32>) -> Result<SequenceSet> {
     if uids.is_empty() {
         bail!("Empty UID set");
     }
