@@ -26,6 +26,7 @@ use crate::{
         search::{eval, query::SearchEmailsQuery},
     },
     maildir::client::MaildirClient,
+    shared::message::part,
 };
 
 impl MaildirClient {
@@ -220,7 +221,7 @@ fn envelope_from_entry(entry: &MaildirFullEntry) -> Envelope {
         .and_then(|m| m.date())
         .and_then(|d| DateTime::parse_from_rfc3339(&d.to_rfc3339()).ok());
 
-    let has_attachment = parsed.as_ref().map(|m| m.attachment_count() > 0);
+    let has_attachment = parsed.as_ref().map(part::has_attachment);
 
     let message_id = parsed
         .as_ref()

@@ -39,6 +39,7 @@ use crate::{
         search::{eval, query::SearchEmailsQuery},
     },
     mbox::{cache::MboxCache, client::MboxClient},
+    shared::message::part,
 };
 
 impl MboxClient {
@@ -433,7 +434,7 @@ fn envelope_from(contents: &[u8]) -> Envelope {
         .and_then(|m| m.date())
         .and_then(|d| DateTime::parse_from_rfc3339(&d.to_rfc3339()).ok());
 
-    let has_attachment = parsed.as_ref().map(|m| m.attachment_count() > 0);
+    let has_attachment = parsed.as_ref().map(part::has_attachment);
 
     let message_id = parsed
         .as_ref()

@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed the named configuration wizard accepting special files or a replaced configuration during prompts. On macOS, ACL-bearing save targets are refused before writing generated credentials.
 - Fixed generated configuration files being readable by other users under a permissive umask on Unix. New files use mode 0600, new configuration directories use mode 0700, and appending restricts the file permissions.
+- Fixed `hasAttachment` reading differently per backend ([#802]).
 - Fixed `-c/--config` being split on `:`, which cut every absolute Windows path at its drive letter: `-c C:\Users\me\config.toml` reached the loader as `C` and `\Users\me\config.toml`, neither of which exists, so the configuration was never read. The delimiter now follows `$PATH` on the platform, `;` on Windows and `:` elsewhere, and the help text says so; `HIMALAYA_CONFIG` and repeated `-c` flags take absolute paths whole. On Windows a colon-joined list is no longer split, so pass several paths with `;` or repeat `-c`.
 - Fixed the wizard reading a `secret-tool` keyring entry only by its `account` attribute: it now prompts for the attribute (default `account`), so a KeePassXC entry keyed by `Title` is found. A secret command failing silently now names its program and exit status instead of an empty `Secret command error` ([#745]).
 - Fixed Maildir mailboxes being named by their last path segment, so `Archive` and `[Gmail]/Archive` both listed as `Archive`: `mailbox list` and `maildir list` now name them by their path relative to `maildir.root`, the name `-m` takes, in both layouts ([himalaya-tui#22](https://github.com/pimalaya/himalaya-tui/issues/22)).
@@ -1458,6 +1459,8 @@ Few major concepts changed:
 [#787]: https://github.com/pimalaya/himalaya/issues/787
 [#781]: https://github.com/pimalaya/himalaya/issues/781
 [#786]: https://github.com/pimalaya/himalaya/issues/786
+[#790]: https://github.com/pimalaya/himalaya/issues/790
+[#802]: https://github.com/pimalaya/himalaya/issues/802
 
 [core#1]: https://github.com/pimalaya/core/issues/1
 [core#10]: https://github.com/pimalaya/core/issues/10
