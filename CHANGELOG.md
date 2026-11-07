@@ -9,10 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Replaced sequential browser questions with one editable account-settings workspace: explicit discovery/manual endpoints, in-place correction, revision-bound checks/save, new create-only Keychain credentials, bounded multi-item rollback and recovery-aware save reconciliation. Added a local one-click launcher; existing accounts and upstream PRs are unchanged.
+
 ### Added
 
 - Fork only: bounded read-only `inbox scan` with server INTERNALDATE candidate search, exact receipt windows, fixed UID snapshot continuations, incremental checkpoints, deferred future receipts and safe coverage/error metadata. The paired OpenMausBot wrapper isolates accounts, classifies process limits and offers private metadata-only monitoring with explicit acknowledgement.
 
+- Added explicit macOS fork-only MPRG legacy STARTTLS with same-connection leaf pin verification before authentication, endpoint restrictions, a total handshake deadline and a consent-bound Web preset. Other accounts retain their ordinary TLS defaults.
+- Added fork-only macOS `configure --web` for local Gmail/Google Workspace and iCloud setup, with explicit authentication checks, native Keychain storage, authenticated short-lived browser sessions and guarded configuration appends. Added cooperating-writer locking and save/revocation coordination without changing terminal discovery behavior.
 - Added `pimdir mailbox list`, listing each mailbox of a pimdir account with its `total` and `unread` counts, its `coverage` (`{since, until, at}`: the scope the sync engine last listed it within, `null` until every source closed a round on it) and the `round` under way (`{since, until, startedAt}`), so a reader can say which mail the store holds (pimdir scoped-mail-sync, io-pimdir `be03184`, where an empty mail date is stored as no date, a band round keeps undated mail and a page across collections walks the store-wide `items_by_sort_global` index). Stores reconciled by that io-pimdir, which have no `probes` table, are read.
 - Added `message parse [EML]`, printing the `message read` view (the same JSON or text) of a raw message read from a file or stdin, with no account and no configuration, and `--part <PART-ID>`, writing one part's decoded bytes as `attachment download --stdout` does. A blank source is refused, and the `message-too-complex` bounds apply.
 - Added a designed `--json` view to `message read`, the same on every backend: `headers` (address lists as `{name, email}`, decoded subject, RFC 3339 date, ids without angle brackets, list headers), `text` and `html` bodies decoded to UTF-8, and `parts`, every leaf part with its id, role (`body`, `inline` or `attachment`), type, decoded file name, size, `contentId`, `charset` and calendar `method`. A message nested deeper than 8 levels, or holding more than 200 parts or 500 header lines, is refused with the error code `message-too-complex`.
@@ -32,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Changed the fork-only browser setup from Gmail/iCloud presets to normal Web forms backed by the existing discovery/authentication wizard, including external token brokers, explicit advanced-credential warnings, redacted previews and consecutive account additions.
 - Changed `imap.id.auto` to send himalaya's canned `name`, `version`, `vendor` and `support-url` when `imap.id.fields` is unset, rather than `ID NIL`, which 163.com acknowledges and then refuses with `Unsafe Login`. An explicit empty `imap.id.fields` still sends `ID NIL` ([#774]).
 - Changed `envelope list` and `envelope search` on a pimdir account to read only what the page needs: newest first by keyset pages up to the end of the page, a search bounded by its date clauses and reading unread mail through the store's unread index, rather than every message of the mailbox. Output is unchanged; on 50,000 mails `envelope list -s 50` goes from 3.65 s to 28 ms.
 - **Breaking:** changed the `--json` output of `message read`, which no longer prints mail-parser's own model of the message but the view above.

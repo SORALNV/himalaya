@@ -11,11 +11,12 @@
 //! No SMTP host is ever invented: with nothing discovered the account is
 //! IMAP-only and SMTP is added by hand.
 
+use crate::wizard::prompt;
 use anyhow::{Result, bail};
 use io_pim_discovery::compose::config::DiscoverySecurity;
 use io_sasl::mechanism::SaslMechanism;
 use io_smtp::client::SmtpClientStd;
-use pimalaya_cli::{prompt, spinner::Spinner};
+use pimalaya_cli::spinner::Spinner;
 use pimalaya_config::secret::SecretResolver;
 
 use crate::{
@@ -58,6 +59,48 @@ pub fn configure_discovered(
 
     let login_hint = discovered.login_default(email);
 
+    if prompt::is_web() {
+        if imap.security == DiscoverySecurity::Plain
+            || smtp
+                .as_ref()
+                .is_some_and(|s| s.security == DiscoverySecurity::Plain)
+        {
+            bail!("Browser setup requires encrypted IMAP/SMTP endpoints");
+        }
+        let summary = format!(
+            "Connect to {}{}? Credentials will be sent only after you choose their source.",
+            format_args!(
+                "{}{}",
+                endpoint_server(imap),
+                if imap.security == DiscoverySecurity::Starttls {
+                    " (STARTTLS required)"
+                } else {
+                    ""
+                }
+            ),
+            smtp.as_ref()
+                .map(|s| format!(
+                    " and {}://{}:{}{}",
+                    if s.security == DiscoverySecurity::Tls {
+                        "smtps"
+                    } else {
+                        "smtp"
+                    },
+                    s.host,
+                    s.port,
+                    if s.security == DiscoverySecurity::Starttls {
+                        " (STARTTLS required)"
+                    } else {
+                        ""
+                    }
+                ))
+                .unwrap_or_default()
+        );
+        if !prompt::bool(summary, false)? {
+            bail!("Connection cancelled");
+        }
+    }
+
     // NOTE: probing is what narrows the menu to the mechanisms the server
     // advertises, a failure falling back to what discovery said.
     let probed = probe_imap_mechanisms(
@@ -75,7 +118,9 @@ pub fn configure_discovered(
     // NOTE: one resolver for both tests, so answering yes to the question
     // below costs one credential read rather than two.
     let mut resolver = SecretResolver::new();
-    test_connection("IMAP", || check::connect_imap(&imap, &mut resolver))?;
+    test_connection("IMAP", || {
+        check::connect_imap(&prompt::for_check(&imap)?, &mut resolver)
+    })?;
 
     // NOTE: SMTP advertises its mechanisms over EHLO rather than through
     // the IMAP capability probe, so its menu stays keyed on discovery.
@@ -87,7 +132,9 @@ pub fn configure_discovered(
                 prompt_sasl(account_name, login_hint.as_deref(), discovered.auth, None)?
             };
             let smtp = smtp_config(endpoint, smtp_sasl);
-            test_connection("SMTP", || check::connect_smtp(&smtp, &mut resolver))?;
+            test_connection("SMTP", || {
+                check::connect_smtp(&prompt::for_check(&smtp)?, &mut resolver)
+            })?;
             Some(smtp)
         }
         None => None,

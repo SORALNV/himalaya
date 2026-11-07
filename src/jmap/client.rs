@@ -39,8 +39,8 @@ impl JmapClient {
     /// `/.well-known/jmap` when the configuration names an authority.
     pub fn new(config: JmapConfig) -> Result<Self> {
         let mut resolver = SecretResolver::new();
-        let http_auth = jmap_http_auth(config.auth.clone(), &mut resolver)?;
         let opts = connect_options(&config, &mut resolver)?;
+        let http_auth = jmap_http_auth(config.auth.clone(), &mut resolver)?;
         let url = parse_server_url(&config.server)?;
 
         let mut inner = Inner::connect(&url, http_auth, opts)?;
@@ -93,8 +93,8 @@ impl JmapClient {
         }
 
         let mut resolver = SecretResolver::new();
-        let http_auth = jmap_http_auth(self.config.auth.clone(), &mut resolver)?;
         let opts = connect_options(&self.config, &mut resolver)?;
+        let http_auth = jmap_http_auth(self.config.auth.clone(), &mut resolver)?;
         let mut download_client = Inner::connect(download_url, http_auth, opts)?;
 
         Ok(download_client.blob_download(download_url)?)
@@ -153,6 +153,8 @@ pub fn connect_options(
     config: &JmapConfig,
     resolver: &mut SecretResolver,
 ) -> Result<JmapClientStdConnectOptions> {
+    let server = parse_server_url(&config.server)?;
+    config.tls.validate_endpoint(&server, false)?;
     Ok(JmapClientStdConnectOptions {
         tls: config.tls.clone().into_tls(config.alpn.clone()),
         proxy: ProxyConfig::resolve(config.proxy.clone(), resolver)?,

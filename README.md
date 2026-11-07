@@ -16,6 +16,8 @@
 - [Features](#features)
 - [Installation](#installation)
 - [Configuration](#configuration)
+  - [Local browser setup (fork only)](#local-browser-setup-fork-only)
+  - [MPRG legacy compatibility (fork only)](#mprg-legacy-compatibility-fork-only)
 - [Usage](#usage)
 - [Interfaces](#interfaces)
 - [FAQ](#faq)
@@ -44,6 +46,7 @@
   - JMAP session resolution <sup>[rfc8620](https://datatracker.ietf.org/doc/html/rfc8620)</sup>
 - **SOCKS5**, **HTTP** proxy support, per account or via `$ALL_PROXY` and `$HTTPS_PROXY`
 - **TOML configuration** with multi-account support
+- **Local browser setup** using the terminal wizard's discovery, backend and credential choices through normal Web forms on macOS (fork only)
 - **JSON** output via `--json`
 
 > [!TIP]
@@ -181,6 +184,28 @@ These are the same paths the [himalaya-tui](https://github.com/pimalaya/himalaya
 Override the path with `-c <PATH>`; multiple paths can be passed at once, separated by `:`. The first one is the base and the rest are deep-merged on top.
 
 To add or reconfigure an account, run the bare `himalaya` wizard again and redirect its printed TOML into (or merge it with) your config file. There is no in-place edit subcommand; `himalaya account list` and `himalaya account check` inspect and validate the accounts already declared.
+
+### Local browser setup (fork only)
+
+On macOS, `himalaya configure --web` opens a single editable Japanese account-settings form, not an embedded terminal, sequential question screen or provider-restricted picker. Use `-c <PATH>` to select the configuration already used by your mail integration. The default build includes the required `wizard`, IMAP, SMTP and TLS features. On this Mac, double-click `Himalaya設定.command` in the repository to launch the installed fork against its existing integration configuration; do not open the HTML source as an application.
+
+![Editable local account settings with dummy metadata](./screenshots/account-settings-web-ui.jpg)
+
+Enter an email address and explicitly retrieve settings, or fill the editable connection fields yourself. Discovery uses the terminal wizard's service search. IMAP/SMTP, JMAP, Gmail API, Microsoft Graph and compiled local stores remain available without a provider allowlist. All connection/authentication fields can be corrected in place. New passwords/tokens are transient during checks and create dedicated, create-only Keychain items only on explicit save. Existing Keychain, pass, Ortie, pizauth and oama references remain available under credential details; missing tools are labelled. OAuth brokers must be configured separately: Himalaya does not run an OAuth grant, and a token saved directly in Keychain is not automatically refreshed. No raw TOML editor is exposed.
+
+Custom credential commands and raw-secret storage require explicit risk approval; changing source or editing a command resets approval. Commands run with your local user permissions; brokers may refresh tokens or request authentication before saving. Never put literal secrets in command lines or server URLs. Raw storage is not recommended: only that choice writes a secret itself into the private config. Previews redact credential branches, and errors never echo raw provider/helper output. Select connection check, then save; editing invalidates the check and destination confirmation without replaying credentials. Submitted secret inputs are cleared. Existing accounts, comments and defaults are preserved; another account can be added in the same session. Checks may read service/session/profile metadata, but never message bodies or send/delete mail.
+
+The server listens only on an ephemeral `127.0.0.1` port and requires a launch-specific capability. Use the automatically opened tab; reloading or bookmarking it does not retain authorization. Finish, Ctrl-C, ten minutes without an accepted user action or thirty minutes total stops it; background polling does not keep it alive. Assets are local, with exact Host/Origin checks, CSP, bounded requests/concurrency and no persistent browser credentials or analytics. The fixed wizard subprocess uses bounded private stdio and is killed/reaped with its process group on cancellation, failure, completion or shutdown. Non-interactive work has a 45-second deadline; credential commands have ten seconds, bounded stdout and discarded stderr. Browser-discovered remote endpoints require encrypted transport and destination confirmation.
+
+The fork's private file modes, macOS ACL refusal, regular-file/inode/snapshot checks, advisory save lock and commit/revocation coordination remain in effect. Multi-item Keychain failures roll back only exactly owned new items. Uncertain creation/cleanup or partial config writes require inspection rather than ordinary retries; possible partial writes retain credentials for recovery. Browser save timeouts reconcile using the exact ticket/revision and never claim a false finish. External credential tools are not transactionally tied to config saving. Same-user malware, privileged extensions, root, untrusted parent directories, hostile non-cooperating writers and malicious custom commands remain outside this boundary. Process-group cleanup is not a sandbox against deliberate detachment. This UI does not itself enable OpenMausBot or change where its model processes data. Run `himalaya configure --help` for the entry point.
+
+### MPRG legacy compatibility (fork only)
+
+The macOS fork includes the `legacy-mprg` build feature. It does not downgrade ordinary connections: an account must explicitly select `tls.provider.legacy-mprg.sha256` for IMAP 143 or SMTP 587 STARTTLS at mail.mprg.cs.chubu.ac.jp. Implicit TLS, plaintext fallback, other endpoints and conflicting TLS options are refused. The Web form offers an MPRG preset, editable receive/send leaf pins and separate risk/destination confirmation.
+
+This mode uses obsolete TLS 1.0 and the server's weak cryptography. CA/hostname/validity validation is replaced by an exact SHA-256 DER leaf match on the same TLS connection before authentication. Matching an old or expired pinned certificate does not establish modern security. The initial observed pin is not independently authenticated, and login codes/passwords remain sensitive. Reconfirm certificate changes explicitly; pins are never renewed silently. The TLS handshake, including a trickling peer, has a ten-second total deadline. No OS trust, global policy or local relay is installed.
+
+Use the Web form to supply credentials locally and save a new dedicated Keychain reference. Existing accounts/defaults remain unchanged. Terminal configuration uses `imap.starttls = true` with `imap.server = "imap://mail.mprg.cs.chubu.ac.jp:143"`, an IMAP SASL username containing the local ID only, and `imap.tls.provider.legacy-mprg.sha256` containing an explicitly accepted 64-digit pin. SMTP uses `smtp://mail.mprg.cs.chubu.ac.jp:587`, STARTTLS and its own pin. Keep passwords out of TOML, shell arguments and logs. Authentication and mailbox-count checks do not establish long-term availability; do not describe transport-only checks as successful login.
 
 ### Proton Mail
 

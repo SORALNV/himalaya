@@ -64,7 +64,7 @@ fn detect(root: &Path) -> Option<Local> {
 
 #[cfg(all(feature = "maildir", feature = "m2dir"))]
 fn pick(root: PathBuf) -> Result<Local> {
-    use pimalaya_cli::prompt;
+    use crate::wizard::prompt;
 
     const MAILDIR: &str = "Maildir";
     const M2DIR: &str = "m2dir";

@@ -257,6 +257,9 @@ pub(crate) fn connect_imap(imap_config: &ImapConfig, resolver: &mut SecretResolv
 
     let auto_id = resolve_auto_id_params(&imap_config.id)?;
     let server = parse_imap_server(&imap_config.server)?;
+    imap_config
+        .tls
+        .validate_endpoint(&server, imap_config.starttls)?;
     let sasl: Option<Sasl> = imap_config
         .sasl
         .clone()
@@ -320,8 +323,8 @@ fn connect_jmap(
 
     use crate::jmap::client::{connect_options, jmap_http_auth, parse_server_url};
 
-    let http_auth = jmap_http_auth(jmap_config.auth.clone(), resolver)?;
     let opts = connect_options(jmap_config, resolver)?;
+    let http_auth = jmap_http_auth(jmap_config.auth.clone(), resolver)?;
     let url = parse_server_url(&jmap_config.server)?;
     let mut client = JmapClientStd::connect(&url, http_auth, opts)?;
     client.session_get(&url)?;
@@ -443,6 +446,9 @@ pub(crate) fn connect_smtp(
 
     let domain: SmtpEhloDomain<'static> = Ipv4Addr::new(127, 0, 0, 1).into();
     let server = crate::smtp::client::parse_smtp_server(&smtp_config.server)?;
+    smtp_config
+        .tls
+        .validate_endpoint(&server, smtp_config.starttls)?;
     let sasl: Option<Sasl> = smtp_config
         .sasl
         .clone()
@@ -525,5 +531,70 @@ impl fmt::Display for CheckReport {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(all(test, feature = "imap", feature = "smtp", feature = "wizard"))]
+mod legacy_tests {
+    use super::*;
+    use crate::config::{SmtpConfig, TlsProviderConfig};
+
+    #[test]
+    #[cfg(feature = "jmap")]
+    fn legacy_jmap_profile_is_rejected_before_credentials_are_resolved() {
+        let root = tempfile::tempdir().unwrap();
+        let marker = root.path().join("must-not-exist");
+        for scheme in ["http", "https"] {
+            let config: crate::config::JmapConfig = toml::from_str(&format!(
+                "server = \"{scheme}://127.0.0.1:9/jmap\"\ntls.provider.legacy-mprg.sha256 = \"{}\"\nauth.bearer.token.command = [\"/usr/bin/touch\", {:?}]\n",
+                "a".repeat(64), marker.to_str().unwrap()
+            )).unwrap();
+            let mut resolver = SecretResolver::new();
+            assert!(connect_jmap(&config, &mut resolver).is_err());
+            assert!(crate::jmap::client::JmapClient::new(config).is_err());
+            assert!(!marker.exists());
+        }
+    }
+    #[test]
+    fn wrong_legacy_endpoint_is_rejected_before_credential_command() {
+        let root = tempfile::tempdir().unwrap();
+        let marker = root.path().join("must-not-exist");
+        let command = pimalaya_config::command::CommandConfig::Argv {
+            program: "/usr/bin/touch".into(),
+            args: vec![marker.to_string_lossy().into()],
+        };
+        let password = pimalaya_config::secret::Secret::Command(command);
+        let tls = crate::config::TlsConfig {
+            provider: Some(TlsProviderConfig::LegacyMprg {
+                sha256: "ab".repeat(32),
+            }),
+            ..Default::default()
+        };
+        let sasl = crate::config::SaslConfig::Plain(crate::config::SaslPlainConfig {
+            authzid: None,
+            authcid: "fixture".into(),
+            passwd: password,
+        });
+        let imap: ImapConfig =
+            toml::from_str("server = \"imap://other.example:143\"\nstarttls = true").unwrap();
+        let imap = ImapConfig {
+            tls: tls.clone(),
+            sasl: Some(sasl.clone()),
+            ..imap
+        };
+        let smtp: SmtpConfig =
+            toml::from_str("server = \"smtp://other.example:587\"\nstarttls = true").unwrap();
+        let smtp = SmtpConfig {
+            tls,
+            sasl: Some(sasl),
+            ..smtp
+        };
+        let mut resolver = SecretResolver::new();
+        assert!(connect_imap(&imap, &mut resolver).is_err());
+        assert!(connect_smtp(&smtp, &mut resolver).is_err());
+        assert!(!marker.exists());
+        assert!(crate::imap::client::ImapClient::new(imap).is_err());
+        assert!(crate::smtp::client::SmtpClient::new(smtp).is_err());
+        assert!(!marker.exists());
     }
 }

@@ -5,8 +5,8 @@
 //! The API takes bearer tokens alone, so the prompts collect the user id
 //! and the token, usually as a broker command since a token expires.
 
+use crate::wizard::prompt;
 use anyhow::Result;
-use pimalaya_cli::prompt;
 
 use crate::{
     config::{GmailAuthConfig, GmailConfig},

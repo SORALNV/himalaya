@@ -200,7 +200,7 @@ pub fn offer_configuration(
         return Ok(false);
     }
 
-    ConfigureCommand.execute(printer, config_paths)?;
+    ConfigureCommand::default().execute(printer, config_paths)?;
 
     Ok(true)
 }

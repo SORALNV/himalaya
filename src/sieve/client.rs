@@ -33,8 +33,10 @@ impl SieveClient {
     /// IMAP, SMTP and ManageSieve blocks name one credential command
     /// spawns it once.
     pub fn new(config: SieveConfig, resolver: &mut SecretResolver) -> Result<Self> {
-        let tls = config.tls.into_tls(config.alpn);
         let server = parse_sieve_server(&config.server)?;
+        let starttls = config.starttls.unwrap_or(server.scheme() == "sieve");
+        config.tls.validate_endpoint(&server, starttls)?;
+        let tls = config.tls.into_tls(config.alpn);
         let sasl: Option<Sasl> = match config.sasl {
             // NOTE: a `unix://` socket is already authenticated, so no
             // SASL is negotiated over it.
@@ -59,7 +61,7 @@ impl SieveClient {
             proxy: ProxyConfig::resolve(config.proxy, resolver)?,
             sasl,
             session: ManagesieveSessionOpenOptions {
-                starttls: config.starttls.unwrap_or(server.scheme() == "sieve"),
+                starttls,
                 allow_cleartext_auth: config.allow_cleartext_auth,
             },
         };
@@ -115,7 +117,28 @@ pub fn build_sieve_client(
 
 #[cfg(test)]
 mod tests {
-    use crate::sieve::client::parse_sieve_server;
+    use pimalaya_config::secret::SecretResolver;
+
+    use crate::{
+        config::SieveConfig,
+        sieve::client::{SieveClient, parse_sieve_server},
+    };
+
+    #[test]
+    fn legacy_profile_is_rejected_before_sieve_credentials_are_resolved() {
+        let dir = tempfile::tempdir().unwrap();
+        let sentinel = dir.path().join("credential-command-ran");
+        let config: SieveConfig = toml::from_str(&format!(
+            "server = \"sieve://mail.mprg.cs.chubu.ac.jp:4190\"\ntls.provider.legacy-mprg.sha256 = \"{}\"\nsasl.plain.username = \"fixture\"\nsasl.plain.password.command = [\"/usr/bin/touch\", {:?}]\n",
+            "a".repeat(64), sentinel.to_str().unwrap()
+        )).unwrap();
+        let error = match SieveClient::new(config, &mut SecretResolver::new()) {
+            Ok(_) => panic!("legacy profile accepted for ManageSieve"),
+            Err(error) => error,
+        };
+        assert!(error.to_string().contains("MPRG legacy TLS"));
+        assert!(!sentinel.exists());
+    }
 
     #[test]
     fn a_bare_authority_resolves_to_starttls_rather_than_implicit_tls() {

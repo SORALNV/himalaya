@@ -15,6 +15,7 @@ pub mod jmap;
 pub mod local;
 #[cfg(feature = "msgraph")]
 pub mod msgraph;
+pub mod prompt;
 pub mod search;
 #[cfg(any(
     feature = "imap",
@@ -23,3 +24,5 @@ pub mod search;
     feature = "msgraph"
 ))]
 pub mod secret;
+#[cfg(all(target_os = "macos", feature = "imap", feature = "smtp"))]
+pub mod web;

@@ -26,6 +26,8 @@ use std::{
 };
 
 #[cfg(unix)]
+use std::os::fd::AsRawFd;
+#[cfg(unix)]
 use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 
 use anyhow::{Context, Result, bail};
@@ -35,6 +37,8 @@ use pimalaya_config::toml::TomlConfig;
 use schemars::JsonSchema;
 use serde::Serialize;
 
+#[cfg(all(target_os = "macos", feature = "imap", feature = "smtp"))]
+use crate::config::AccountConfig;
 use crate::{
     config::{CONFIG_SAMPLE_URL, Config},
     wizard::discover,
@@ -47,8 +51,29 @@ use crate::{
 /// to the configuration already there, or prints it to be placed by hand.
 ///
 /// Anything discovery does not cover is written by hand.
-#[derive(Debug, Parser)]
-pub struct ConfigureCommand;
+#[derive(Debug, Default, Parser)]
+pub struct ConfigureCommand {
+    /// Open the fork-only local browser forms for the account wizard.
+    ///
+    /// Uses the same discovery, backend and authentication choices as the
+    /// terminal wizard. Credentials may use Keychain or token brokers;
+    /// custom commands and plaintext require explicit warnings. No mail
+    /// operations or native OAuth grants are exposed.
+    #[arg(long, conflicts_with_all = ["web_check_worker", "web_keychain_worker", "web_form_worker", "web_settings_worker"])]
+    pub web: bool,
+    /// Run the bounded internal provider authentication worker.
+    #[arg(long, hide = true)]
+    pub web_check_worker: bool,
+    /// Run the bounded internal native Keychain worker.
+    #[arg(long, hide = true, conflicts_with = "web_check_worker")]
+    pub web_keychain_worker: bool,
+    /// Run the private structured-question account worker.
+    #[arg(long, hide = true, conflicts_with_all = ["web_check_worker", "web_keychain_worker"])]
+    pub web_form_worker: bool,
+    /// Run a bounded private discovery or typed-settings check.
+    #[arg(long,hide=true,conflicts_with_all=["web_check_worker","web_keychain_worker","web_form_worker"])]
+    pub web_settings_worker: bool,
+}
 
 impl ConfigureCommand {
     /// Runs the wizard, then saves, appends or prints the account.
@@ -61,6 +86,14 @@ impl ConfigureCommand {
     /// non-interactive, the document going to stdout and no file being
     /// touched. The prompts render on stderr, out of that document.
     pub fn execute(self, printer: &mut impl Printer, config_paths: &[PathBuf]) -> Result<()> {
+        if self.web
+            || self.web_check_worker
+            || self.web_keychain_worker
+            || self.web_form_worker
+            || self.web_settings_worker
+        {
+            return self.execute_web(printer, config_paths);
+        }
         if !stdin().is_terminal() {
             bail!(
                 "Configuring needs a terminal to prompt on, \
@@ -94,6 +127,46 @@ impl ConfigureCommand {
             Some(existing) => append_or_print(printer, &path, config, &existing.snapshot),
             None => save_or_print(printer, &path, config),
         }
+    }
+}
+
+#[cfg(all(target_os = "macos", feature = "imap", feature = "smtp"))]
+impl ConfigureCommand {
+    fn execute_web(self, printer: &mut impl Printer, paths: &[PathBuf]) -> Result<()> {
+        use crate::wizard::web;
+
+        if self.web_settings_worker {
+            return web::settings::execute_worker();
+        }
+        if self.web_form_worker {
+            return web::form::execute();
+        }
+        if self.web_keychain_worker {
+            return web::keychain::execute_worker();
+        }
+        if !cfg!(any(
+            feature = "rustls-ring",
+            feature = "rustls-aws",
+            feature = "native-tls"
+        )) {
+            bail!(
+                "Browser setup requires a TLS backend; enable rustls-ring, rustls-aws or native-tls"
+            );
+        }
+        if self.web_check_worker {
+            return web::worker::execute();
+        }
+        if printer.is_json() {
+            bail!("Browser setup is interactive; omit --json");
+        }
+        web::execute(paths)
+    }
+}
+
+#[cfg(not(all(target_os = "macos", feature = "imap", feature = "smtp")))]
+impl ConfigureCommand {
+    fn execute_web(self, _printer: &mut impl Printer, _paths: &[PathBuf]) -> Result<()> {
+        bail!("Browser setup requires macOS and the wizard, imap and smtp features")
     }
 }
 
@@ -250,6 +323,17 @@ fn write_configuration(
     document: &str,
     snapshot: Option<&ConfigSnapshot>,
 ) -> Result<()> {
+    write_configuration_tracked(path, document, snapshot, &mut false, &|| Ok(()))
+}
+
+fn write_configuration_tracked(
+    path: &Path,
+    document: &str,
+    snapshot: Option<&ConfigSnapshot>,
+    may_have_written: &mut bool,
+    before_mutation: &dyn Fn() -> Result<()>,
+) -> Result<()> {
+    before_mutation()?;
     let append = snapshot.is_some();
     if !append && let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
         create_private_directories(parent)?;
@@ -269,6 +353,15 @@ fn write_configuration(
         .open(path)
         .with_context(|| format!("Open the config file {}", path.display()))?;
     require_regular_file(&file)?;
+    #[cfg(unix)]
+    {
+        // SAFETY: the validated descriptor stays open through the commit.
+        // The nonblocking lock covers revalidation and all following writes.
+        let result = unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) };
+        if result != 0 {
+            bail!("Configuration is being saved by another process");
+        }
+    }
     if let Some(snapshot) = snapshot {
         let metadata = file.metadata()?;
         let original = snapshot.file.metadata()?;
@@ -287,14 +380,136 @@ fn write_configuration(
         }
     }
     require_no_macos_acl(&file)?;
+    before_mutation()?;
     #[cfg(unix)]
     if append {
         file.set_permissions(fs::Permissions::from_mode(0o600))
             .with_context(|| format!("Restrict the config permissions {}", path.display()))?;
     }
+    *may_have_written = true;
     file.write_all(document.as_bytes())
         .with_context(|| format!("Write the config file {}", path.display()))?;
     Ok(())
+}
+
+/// A fixed browser save target retaining the terminal wizard's snapshot.
+#[cfg(all(target_os = "macos", feature = "imap", feature = "smtp"))]
+pub(super) struct SetupTarget {
+    path: PathBuf,
+    existing: Option<ExistingConfig>,
+}
+
+#[cfg(all(target_os = "macos", feature = "imap", feature = "smtp"))]
+impl SetupTarget {
+    /// Resolves one target before starting the browser session.
+    pub fn open(paths: &[PathBuf]) -> Result<Self> {
+        if paths.len() > 1 {
+            bail!("Browser setup accepts only one configuration path");
+        }
+        let path = Config::target_path(paths)?;
+        if let Ok(metadata) = fs::metadata(&path)
+            && metadata.len() > 1024 * 1024
+        {
+            bail!("Configuration exceeds the browser setup size limit");
+        }
+        let existing = ExistingConfig::read(&path)?;
+        Ok(Self { path, existing })
+    }
+
+    /// Lists account names without resolving secrets or returning raw TOML.
+    pub fn names(&self) -> Vec<String> {
+        self.existing
+            .as_ref()
+            .map(|c| c.names.clone())
+            .unwrap_or_default()
+    }
+
+    /// Refreshes the same fixed target after this session's successful save.
+    pub fn refresh(&mut self) -> Result<()> {
+        self.existing = ExistingConfig::read(&self.path)?;
+        Ok(())
+    }
+
+    /// Renders only the typed new account, preserving the existing default.
+    pub fn render(&self, name: &str, mut account: AccountConfig) -> Result<String> {
+        if self.names().iter().any(|existing| existing == name) {
+            bail!("Account name already exists");
+        }
+        account.default = !self.existing.as_ref().is_some_and(|c| c.has_default);
+        account.render(name)
+    }
+
+    /// Renames only a newly generated block without re-expanding its fields.
+    pub fn render_generated(&self, name: &str, base: &str, document: &str) -> Result<String> {
+        if self.names().iter().any(|n| n == name) {
+            bail!("Account name already exists");
+        }
+        let parsed: toml::Value = toml::from_str(document)?;
+        let accounts = parsed
+            .get("accounts")
+            .and_then(toml::Value::as_table)
+            .ok_or_else(|| anyhow::anyhow!("Invalid generated account"))?;
+        if accounts.len() != 1
+            || !accounts.contains_key(base)
+            || parsed.as_table().is_none_or(|t| t.len() != 1)
+        {
+            bail!("Expected one generated account");
+        }
+        if accounts[base].get("default").is_some() {
+            bail!("Generated account must not select a default");
+        }
+        let (_, body) = document
+            .split_once('\n')
+            .ok_or_else(|| anyhow::anyhow!("Invalid generated account header"))?;
+        let default = if self.existing.as_ref().is_some_and(|c| c.has_default) {
+            ""
+        } else {
+            "default = true\n"
+        };
+        let key = toml::Value::String(name.into());
+        let result = format!("[accounts.{key}]\n{default}{body}");
+        let rebuilt: toml::Value = toml::from_str(&result)?;
+        let renamed = rebuilt
+            .get("accounts")
+            .and_then(toml::Value::as_table)
+            .ok_or_else(|| anyhow::anyhow!("Invalid renamed account"))?;
+        if renamed.len() != 1 || !renamed.contains_key(name) {
+            bail!("Expected exactly one renamed account");
+        }
+        let mut expected = accounts[base].clone();
+        if !default.is_empty() {
+            expected
+                .as_table_mut()
+                .ok_or_else(|| anyhow::anyhow!("Invalid generated account"))?
+                .insert("default".into(), toml::Value::Boolean(true));
+        }
+        if renamed[name] != expected {
+            bail!("Generated account body changed while renaming");
+        }
+        Ok(result)
+    }
+
+    /// Appends through the same descriptor and ACL guards as the CLI.
+    pub fn save(
+        &self,
+        document: &str,
+        may_have_written: &mut bool,
+        before_mutation: &dyn Fn() -> Result<()>,
+    ) -> Result<()> {
+        let snapshot = self.existing.as_ref().map(|c| &c.snapshot);
+        let text = if snapshot.is_some() {
+            format!("\n{document}\n")
+        } else {
+            format!("{document}\n")
+        };
+        write_configuration_tracked(
+            &self.path,
+            &text,
+            snapshot,
+            may_have_written,
+            before_mutation,
+        )
+    }
 }
 
 /// The identity and bytes validated before the wizard prompts.

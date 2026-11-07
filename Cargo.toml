@@ -12,7 +12,8 @@ homepage = "https://pimalaya.org"
 repository = "https://github.com/pimalaya/himalaya"
 
 [features]
-default = ["rustls-ring", "imap", "smtp", "jmap", "gmail", "msgraph", "maildir", "mbox", "sieve", "pimdir", "vendored", "wizard"]
+default = ["rustls-ring", "imap", "smtp", "jmap", "gmail", "msgraph", "maildir", "mbox", "sieve", "pimdir", "vendored", "wizard", "legacy-mprg"]
+legacy-mprg = ["pimalaya-stream/legacy-pinned"]
 native-tls = ["pimalaya-stream/native-tls", "io-pim-discovery?/native-tls", "io-imap?/native-tls", "io-jmap?/native-tls", "io-gmail?/native-tls", "io-msgraph?/native-tls", "io-smtp?/native-tls", "io-managesieve?/native-tls"]
 rustls-aws = ["pimalaya-stream/rustls-aws", "io-pim-discovery?/rustls-aws", "io-imap?/rustls-aws", "io-jmap?/rustls-aws", "io-gmail?/rustls-aws", "io-msgraph?/rustls-aws", "io-smtp?/rustls-aws", "io-managesieve?/rustls-aws"]
 rustls-ring = ["pimalaya-stream/rustls-ring", "io-pim-discovery?/rustls-ring", "io-imap?/rustls-ring", "io-jmap?/rustls-ring", "io-gmail?/rustls-ring", "io-msgraph?/rustls-ring", "io-smtp?/rustls-ring", "io-managesieve?/rustls-ring"]
@@ -27,7 +28,7 @@ m2dir = ["dep:convert_case", "dep:io-m2dir", "dep:mail-parser", "io-m2dir/client
 sieve = ["dep:io-managesieve", "io-managesieve/client", "io-managesieve/scram"]
 pimdir = ["dep:io-pimdir", "dep:mail-parser"]
 vendored = ["pimalaya-stream/vendored", "io-pimdir?/vendored"]
-wizard = ["dep:io-pim-discovery", "pimalaya-cli/wizard", "pimalaya-cli/imap", "pimalaya-cli/smtp", "pimalaya-cli/jmap", "pimalaya-cli/spinner"]
+wizard = ["dep:io-pim-discovery", "pimalaya-cli/wizard", "pimalaya-cli/imap", "pimalaya-cli/smtp", "pimalaya-cli/jmap", "pimalaya-cli/spinner", "dep:core-foundation", "dep:getrandom", "dep:http-body-util", "dep:hyper", "dep:hyper-util", "dep:security-framework", "dep:security-framework-sys", "dep:subtle", "dep:tokio", "dep:zeroize"]
 
 [profile.release]
 lto = "fat"
@@ -89,5 +90,18 @@ uds_windows = "1"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = { version = "0.10", optional = true }
+getrandom = { version = "0.4", optional = true }
+http-body-util = { version = "0.1", optional = true }
+hyper = { version = "1.9", default-features = false, features = ["http1", "server"], optional = true }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio"], optional = true }
+security-framework = { version = "3.7", optional = true }
+security-framework-sys = { version = "2.17", optional = true }
+subtle = { version = "2.6", default-features = false, optional = true }
+tokio = { version = "1.52", default-features = false, features = ["rt-multi-thread", "net", "time", "sync", "signal", "macros"], optional = true }
+zeroize = { version = "1.9", features = ["serde"], optional = true }
+
 [patch.crates-io]
+pimalaya-stream = { path = "vendor/pimalaya-stream" }
 pimalaya-config = { git = "https://github.com/SORALNV/config", rev = "12ed680559182516d7df56f5bc349f820e00c808" }

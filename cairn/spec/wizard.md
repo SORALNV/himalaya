@@ -6,6 +6,8 @@ status: current
 
 # Wizard
 
+This capability describes the terminal wizard. The fork's explicit `configure --web` mode reuses service discovery and typed backend/authentication configurations through an editable account-settings form, with browser-specific safety and persistence requirements defined in [local-setup.md](local-setup.md). Manual remote fields belong to that browser capability; terminal discovery behavior is unchanged.
+
 Bare `himalaya` (no subcommand) runs the interactive configuration wizard, and it is also proposed when a command finds no config at all. The wizard discovers an account and prints it as a ready-to-save TOML fragment on stdout, writing nothing to disk. Prompts render on stderr, so redirecting stdout into a config file works directly.
 
 ### Requirement: Input orients the flow

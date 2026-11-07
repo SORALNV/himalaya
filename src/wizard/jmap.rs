@@ -4,9 +4,10 @@
 //! which also names the authentication method, so only the credentials
 //! are prompted.
 
+use crate::wizard::prompt;
 use anyhow::{Result, bail};
 use io_jmap::client::JmapClientStd;
-use pimalaya_cli::{prompt, spinner::Spinner};
+use pimalaya_cli::spinner::Spinner;
 
 use crate::{
     config::{JmapAuthConfig, JmapConfig},
@@ -34,6 +35,19 @@ pub fn configure_discovered(
         bail!("Expected a JMAP configuration");
     };
 
+    if prompt::is_web() {
+        let url = url::Url::parse(server)?;
+        if url.scheme() != "https" || !url.username().is_empty() || url.password().is_some() {
+            bail!("Browser setup requires an HTTPS JMAP endpoint without URL credentials");
+        }
+        if !prompt::bool(
+            format!("Connect to {server}? Credentials will be sent after you choose their source."),
+            false,
+        )? {
+            bail!("Connection cancelled");
+        }
+    }
+
     let auth = prompt_auth(
         account_name,
         discovered.login_default(email).as_deref(),
@@ -50,7 +64,7 @@ pub fn configure_discovered(
 fn test_connection(config: &JmapConfig) -> Result<()> {
     let spinner = Spinner::start("Testing JMAP connection");
 
-    match JmapClient::new(config.clone()) {
+    match JmapClient::new(prompt::for_check(config)?) {
         Ok(_) => {
             spinner.success("JMAP connection succeeded");
             Ok(())

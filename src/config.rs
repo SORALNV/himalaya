@@ -1099,6 +1099,11 @@ pub enum TlsProviderConfig {
     Rustls,
     /// The platform's own TLS stack.
     NativeTls,
+    /// Explicit MPRG-only TLS 1.0 compatibility, with exact leaf pinning.
+    LegacyMprg {
+        /// SHA-256 of the explicitly accepted DER leaf certificate.
+        sha256: String,
+    },
 }
 
 /// Rustls configuration.
@@ -1120,6 +1125,41 @@ pub enum RustlsCryptoConfig {
 }
 
 impl TlsConfig {
+    /// Rejects misuse of the explicitly opted-in legacy profile before secrets
+    /// are resolved or any server connection is made.
+    pub fn validate_endpoint(&self, server: &url::Url, starttls: bool) -> anyhow::Result<()> {
+        if let Some(TlsProviderConfig::LegacyMprg { sha256 }) = &self.provider {
+            if !cfg!(all(feature = "legacy-mprg", target_os = "macos")) {
+                anyhow::bail!("MPRG legacy TLS requires macOS and the legacy-mprg build feature");
+            }
+            let port = match server.scheme() {
+                "imap" => 143,
+                "smtp" => 587,
+                _ => 0,
+            };
+            if !starttls
+                || port == 0
+                || server.host_str() != Some("mail.mprg.cs.chubu.ac.jp")
+                || server.port() != Some(port)
+                || !server.username().is_empty()
+                || server.password().is_some()
+                || server.query().is_some()
+                || server.fragment().is_some()
+                || !["", "/"].contains(&server.path())
+            {
+                anyhow::bail!(
+                    "MPRG legacy TLS is limited to the explicitly configured IMAP 143 / SMTP 587 STARTTLS endpoints"
+                );
+            }
+            if self.cert.is_some() || self.rustls.crypto.is_some() {
+                anyhow::bail!("MPRG legacy TLS cannot combine conflicting TLS options");
+            }
+            if sha256.len() != 64 || !sha256.bytes().all(|b| b.is_ascii_hexdigit()) {
+                anyhow::bail!("MPRG legacy TLS requires an explicit SHA-256 leaf pin");
+            }
+        }
+        Ok(())
+    }
     /// Builds the runtime [`Tls`] handle the connect helpers expect,
     /// folding in the protocol-level `alpn` list.
     ///
@@ -1131,6 +1171,10 @@ impl TlsConfig {
             provider: self.provider.map(|p| match p {
                 TlsProviderConfig::Rustls => TlsProvider::Rustls,
                 TlsProviderConfig::NativeTls => TlsProvider::NativeTls,
+                TlsProviderConfig::LegacyMprg { sha256 } => TlsProvider::LegacyPinned {
+                    expected_host: "mail.mprg.cs.chubu.ac.jp".into(),
+                    sha256,
+                },
             }),
             rustls: Rustls {
                 crypto: self.rustls.crypto.map(|c| match c {
@@ -1471,6 +1515,64 @@ mod tests {
     use std::env::var;
 
     use super::*;
+
+    #[test]
+    fn legacy_profile_is_explicit_and_preserves_normal_defaults() {
+        let ordinary: TlsConfig = toml::from_str("").unwrap();
+        assert!(ordinary.provider.is_none());
+        let config: TlsConfig = toml::from_str(&format!(
+            "provider.legacy-mprg.sha256 = \"{}\"",
+            "ab".repeat(32)
+        ))
+        .unwrap();
+        let endpoint = url::Url::parse("imap://mail.mprg.cs.chubu.ac.jp:143").unwrap();
+        assert_eq!(
+            config.validate_endpoint(&endpoint, true).is_ok(),
+            cfg!(all(feature = "legacy-mprg", target_os = "macos"))
+        );
+        let saved = toml::to_string(&config).unwrap();
+        assert!(saved.contains("legacy-mprg"));
+        let rebuilt: TlsConfig = toml::from_str(&saved).unwrap();
+        assert!(matches!(
+            rebuilt.provider,
+            Some(TlsProviderConfig::LegacyMprg { .. })
+        ));
+    }
+
+    #[test]
+    fn legacy_profile_rejects_wrong_endpoint_pin_and_conflicting_options() {
+        let mut config = TlsConfig {
+            provider: Some(TlsProviderConfig::LegacyMprg {
+                sha256: "ab".repeat(32),
+            }),
+            ..Default::default()
+        };
+        for server in [
+            "imap://other.example:143",
+            "imaps://mail.mprg.cs.chubu.ac.jp:993",
+            "imap://mail.mprg.cs.chubu.ac.jp:144",
+            "smtp://mail.mprg.cs.chubu.ac.jp:465",
+            "https://mail.mprg.cs.chubu.ac.jp",
+            "imap://user@mail.mprg.cs.chubu.ac.jp:143",
+            "imap://mail.mprg.cs.chubu.ac.jp:143/path",
+        ] {
+            assert!(
+                config
+                    .validate_endpoint(&url::Url::parse(server).unwrap(), true)
+                    .is_err(),
+                "{server}"
+            );
+        }
+        let endpoint = url::Url::parse("imap://mail.mprg.cs.chubu.ac.jp:143").unwrap();
+        assert!(config.validate_endpoint(&endpoint, false).is_err());
+        config.cert = Some("/unused/cert.pem".into());
+        assert!(config.validate_endpoint(&endpoint, true).is_err());
+        config.cert = None;
+        for pin in ["", "00", &"g".repeat(64)] {
+            config.provider = Some(TlsProviderConfig::LegacyMprg { sha256: pin.into() });
+            assert!(config.validate_endpoint(&endpoint, true).is_err());
+        }
+    }
 
     const IMAP: &[&str] = &["imap", "imaps"];
 

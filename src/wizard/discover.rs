@@ -22,10 +22,11 @@
 
 use std::path::Path;
 
+use crate::wizard::prompt;
 use anyhow::{Context, Result, bail};
 #[cfg(all(feature = "imap", feature = "smtp"))]
 use io_pim_discovery::compose::config::DiscoverySecurity;
-use pimalaya_cli::{prompt, spinner::Spinner};
+use pimalaya_cli::spinner::Spinner;
 use url::Url;
 
 #[cfg(feature = "gmail")]
@@ -95,7 +96,7 @@ pub fn run() -> Result<(String, AccountConfig)> {
     // IMAP and SMTP flow already tested each side as it configured them.
     if !tested {
         let spinner = Spinner::start("Testing account configuration");
-        if let Err(err) = check::test_account(&account) {
+        if let Err(err) = check::test_account(&prompt::for_check(&account)?) {
             spinner.failure("Account configuration test failed");
             return Err(err);
         }

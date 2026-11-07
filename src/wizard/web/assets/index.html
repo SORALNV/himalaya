@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Himalaya · アカウント設定</title>
+<link rel="stylesheet" href="./style.css"><script src="./app.js" defer></script>
+</head>
+<body>
+<noscript>この画面にはJavaScriptが必要です。HTMLを直接開かず、Himalaya設定.command から起動してください。</noscript>
+<div id="file-warning" class="banner warning" hidden>これは画面のソースファイルです。設定はできません。リポジトリの「Himalaya設定.command」をダブルクリックして起動してください。</div>
+<div id="session-error" class="banner warning" role="alert" hidden></div>
+<header class="topbar"><span class="brand">△ <strong>himalaya</strong><span class="divider">/</span> アカウント設定</span><div class="top-actions"><span class="local-dot">このMacのみ</span><button id="finish" type="button" class="quiet">終了</button></div></header>
+<main class="workspace">
+<aside class="sidebar"><h2>登録済みアカウント</h2><ul id="accounts" aria-label="登録済みアカウント"><li class="muted">確認中…</li></ul><button id="add-account" type="button" class="add-button">＋ アカウントを追加</button><p class="sidebar-note">既存のアカウントは変更しません。</p></aside>
+<section class="editor">
+<div class="editor-heading"><div><h1>アカウントを追加</h1><p>メールアドレスから設定を取得するか、接続先を入力してください。</p></div><span id="state" class="badge">未確認</span></div>
+<form id="settings-form" autocomplete="off" novalidate>
+<fieldset id="all-fields">
+<section class="section identity">
+<div class="two-cols"><div><label for="email">メールアドレス</label><div class="input-action"><input id="email" type="email" placeholder="you@example.com" spellcheck="false" autocapitalize="none" maxlength="254"><button id="discover" type="button" class="secondary">設定を自動取得</button></div><p id="email-error" class="field-error" hidden></p></div><div><label for="name">アカウント名</label><input id="name" placeholder="例：university" maxlength="64" spellcheck="false"><p class="hint">CLIで指定する名前。半角英数字・ハイフン・_ が使えます。</p><p id="name-error" class="field-error" hidden></p></div></div>
+<div id="discovered" class="discovered" hidden><label for="service">取得した設定</label><select id="service"></select></div>
+</section>
+<section class="section">
+<div class="section-heading"><h2>接続設定</h2><label class="compact-label" for="backend">接続方式 <select id="backend"><option value="imap">IMAP / SMTP</option></select></label></div>
+<div id="endpoints" class="endpoints" aria-live="polite">接続先を入力するか、自動取得してください。</div>
+<p id="backend-error" class="field-error" hidden></p>
+<details id="connection-details" open><summary>接続先・暗号化の詳細を編集</summary><div class="detail-body">
+<div id="imap-settings">
+<div class="server-row"><div><label for="receive-host">受信サーバー（IMAP）</label><input id="receive-host" placeholder="imap.example.com" spellcheck="false"></div><div><label for="receive-port">ポート</label><input id="receive-port" type="number" value="993" min="1" max="65535"></div><div><label for="receive-encryption">暗号化</label><select id="receive-encryption"><option value="tls">TLS</option><option value="starttls">STARTTLS</option></select></div></div>
+<label class="check-line"><input id="smtp-enabled" type="checkbox" checked> SMTPでメールを送信するための接続も設定する</label>
+<div id="smtp-server-settings" class="server-row"><div><label for="smtp-host">送信サーバー（SMTP）</label><input id="smtp-host" placeholder="smtp.example.com" spellcheck="false"></div><div><label for="smtp-port">ポート</label><input id="smtp-port" type="number" value="587" min="1" max="65535"></div><div><label for="smtp-encryption">暗号化</label><select id="smtp-encryption"><option value="starttls">STARTTLS</option><option value="tls">TLS</option></select></div></div>
+</div>
+<div id="jmap-settings" hidden><label for="server">JMAPサーバーURL</label><input id="server" placeholder="https://mail.example.com/jmap" spellcheck="false"><p id="server-error" class="field-error" hidden></p></div>
+<div id="api-settings" hidden><label for="user-id">ユーザーID</label><input id="user-id" value="me" spellcheck="false"><p class="hint">通常は me。OAuthトークンは外部ツールで発行・更新します。</p><p id="user-id-error" class="field-error" hidden></p></div>
+<div id="local-settings" hidden><label for="root">メール保存フォルダー</label><input id="root" placeholder="/Users/名前/Mail" spellcheck="false"><p class="hint">既存フォルダーの絶対パス。メール本文は読み込みません。</p><p id="root-error" class="field-error" hidden></p></div>
+</div></details>
+<p id="receive-error" class="field-error" hidden></p><p id="smtp-error" class="field-error" hidden></p>
+<details id="legacy-details" hidden><summary>旧サーバーの互換設定（MPRG専用・非推奨）</summary><div class="detail-body">
+<p class="hint">この研究室メール専用です。TLS 1.0と弱いサーバー暗号を使用し、通常のCA・ホスト名・有効期間の確認を証明書の完全一致確認に置き換えます。ログインコードやパスワードが漏れる危険は残ります。</p>
+<button id="legacy-preset" type="button" class="secondary">MPRGの接続設定を入力</button>
+<label class="check-line"><input id="legacy-enabled" type="checkbox"> この接続だけ旧TLS互換モードを使用する</label>
+<div id="legacy-options" hidden><input id="legacy-imap-pin" type="hidden"><input id="legacy-smtp-pin" type="hidden"><p id="legacy-pin-info" class="hint"></p><label class="check-line risk"><input id="legacy-approved" type="checkbox"> 旧TLSと、初回の証明書取得が独立に認証されていないリスクを理解して、この接続で許可する</label></div>
+<p id="legacy-error" class="field-error" hidden></p>
+</div></details>
+</section>
+<section id="authentication" class="section">
+<h2>認証情報</h2>
+<div class="two-cols"><div id="login-row"><label for="login">ログイン名</label><input id="login" placeholder="通常はメールアドレス" spellcheck="false" autocapitalize="none"><p id="login-error" class="field-error" hidden></p></div><div id="mechanism-row"><label for="mechanism">認証方法</label><select id="mechanism"></select><p id="mechanism-error" class="field-error" hidden></p></div></div>
+<div id="primary-credential"></div><p id="credential-error" class="field-error" hidden></p>
+<div id="smtp-auth-toggle"><label class="check-line"><input id="smtp-shared" type="checkbox" checked> 送信用も同じログイン名・認証情報を使う</label></div>
+<div id="smtp-authentication" class="subsection" hidden><h3>SMTP用の認証情報</h3><div class="two-cols"><div><label for="smtp-login">送信用ログイン名</label><input id="smtp-login" spellcheck="false"></div><div><label for="smtp-mechanism">送信用の認証方法</label><select id="smtp-mechanism"></select></div></div><div id="secondary-credential"></div><p id="smtp-credential-error" class="field-error" hidden></p></div>
+</section>
+<section class="section confirm-section"><label class="check-line"><input id="destination" type="checkbox"> 上に表示された接続先を確認し、この設定で接続確認を行います。</label><p class="hint">接続確認では認証情報を選択したサービスに送信します。送信・削除は行いません。</p><p id="destination-error" class="field-error" hidden></p></section>
+</fieldset>
+<div id="feedback" class="feedback" role="status" aria-live="polite" hidden></div>
+<div id="checked" class="checked" hidden><strong>✓ 接続確認が完了しました</strong><p>この内容を保存できます。入力を変更すると再確認が必要です。</p><details><summary>保存する設定を確認（認証情報は非表示）</summary><pre id="preview"></pre></details></div>
+<footer class="actions"><div class="action-status"><span id="action-hint">まだ設定は保存していません</span><button id="cancel-operation" type="button" class="quiet" hidden>確認を中止</button></div><div class="action-buttons"><button id="test" type="submit" class="secondary">接続確認</button><button id="save" type="button" class="primary" disabled>保存する</button></div></footer>
+</form>
+<section id="success" class="success" hidden><span class="success-icon">✓</span><h2>アカウントを追加しました</h2><p id="saved-name"></p><button id="another" type="button" class="primary">別のアカウントを追加</button></section>
+</section>
+</main>
+<template id="credential-template">
+<div class="credential-block">
+<label data-label="value">パスワード / アプリパスワード</label><input data-role="value" type="password" autocomplete="new-password" maxlength="4096" spellcheck="false"><p data-role="value-hint" class="hint">入力した秘密は接続確認にだけ使用し、保存時にこのMacのKeychainへ登録します。</p>
+<div data-role="entry-row" hidden><label data-label="entry">保存済み項目名 / 管理ツールのアカウント名</label><input data-role="entry" maxlength="1024" spellcheck="false" autocomplete="off"><p data-role="entry-hint" class="hint"></p></div>
+<div data-role="confirm-row" hidden><label data-label="confirm">秘密をもう一度入力</label><input data-role="confirm" type="password" autocomplete="new-password" maxlength="4096"></div>
+<details class="credential-details"><summary>保存先・認証情報の取得方法を変更</summary><label data-label="source">保存先 / 取得方法</label><select data-role="source"></select><p data-role="source-hint" class="hint"></p></details>
+<label data-role="approval-row" class="check-line risk" hidden><input data-role="approved" type="checkbox"><span data-role="risk-text"></span></label>
+</div>
+</template>
+</body>
+</html>
