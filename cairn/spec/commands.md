@@ -77,6 +77,9 @@ The same composers SHALL end the body with the account's `signature`, introduced
 
 With `--json` and neither `--save` nor `--send`, the same composers SHALL print the decoded `from`, `to`, `cc`, `bcc`, `subject` and `body` instead of the raw bytes, the body without any signature, so an editor can lay the message out and hand it back through the flags, sending appending the signature once. `--posting-style none` SHALL send the written body alone, the source left unquoted, for a writer who already laid the quote out.
 
+### Requirement: A composed Message-ID sits on the sender's domain
+`message compose`, `reply` and `forward` SHALL set the `Message-ID` on the domain of the `From` address rather than the hostname of the machine, the local part coming from the generator. With no `From`, or a domain that is not a plain dot-atom (a domain literal, an internationalized domain), the header SHALL be left to the generator, which falls back to the hostname.
+
 ### Requirement: Reply to all recipients
 `message reply --all` (`-A`) SHALL keep the `To` of a plain reply and fill `Cc` with the `To` and `Cc` of the source, without the account's `email` and without any address already in `To`, each address once, compared ignoring case, display names kept. An explicit `--to` SHALL replace the derived `To`, the `Cc` then being deduplicated against it, and an explicit `--cc` SHALL replace the derived `Cc` whole. Without `--all`, `Cc` SHALL stay empty unless `--cc` fills it.
 

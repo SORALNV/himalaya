@@ -5,8 +5,8 @@ change: fork-upstream-maintenance
 
 ## ADDED Requirements
 
-### Requirement: Composed identity uses the sender domain
-Composed messages SHALL generate their Message-ID on a plain sender domain rather than the local hostname when such a domain is available.
+### Requirement: A composed Message-ID sits on the sender's domain
+`message compose`, `reply` and `forward` SHALL set the `Message-ID` on the domain of the `From` address rather than the hostname of the machine, the local part coming from the generator. With no `From`, or a domain that is not a plain dot-atom (a domain literal, an internationalized domain), the header SHALL be left to the generator, which falls back to the hostname.
 
 ### Requirement: Preserve fork protections during upstream maintenance
 The fork SHALL keep the stronger named-wizard save-target checks and the pinned credential-helper error redaction when importing upstream maintenance. Its unified inbox SHALL retain account identity, backend receipt timestamps and explicit partial coverage across protocol-library updates.

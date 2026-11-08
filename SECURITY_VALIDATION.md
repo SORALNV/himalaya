@@ -29,6 +29,12 @@ Reduced IMAP/SMTP and JMAP builds passed. The ManageSieve-only suite passed 64 t
 
 Cargo audit found no known vulnerabilities or advisory warnings among 328 locked packages using the RustSec database updated on 2026-10-09. Cargo deny passed advisories, licenses, bans and sources; it emitted dependency-duplication warnings. These results cover the checked source and macOS build, not every operating system or external OAuth helper.
 
+## Upstream maintenance integration
+
+On 2026-11-08 the fork imported 22 upstream commits on top of its base `341daeb`, leaving the wizard save-target defenses, the credential-helper redaction pin (`SORALNV/config` `12ed6805`) and the receipt-aware inbox calls unchanged. `io-imap` is now pinned to `5d83c49` for the UIDVALIDITY 0 `COPYUID`, and `pimalaya-cli` to `e4ea7f4` for the `secret-tool` fix; the vendored `pimalaya-stream` is untouched.
+
+On macOS arm64, the all-features suite passed 394 unit tests and 14 integration tests, with five existing tests ignored. Formatting and clippy with warnings denied over all targets passed. The reduced IMAP+SMTP and Maildir-only builds compiled with the same or fewer warnings than the base commit, none in the imported files. `scripts/security_smoke.py --binary target/release/himalaya` reported PASS on all seventeen scenarios, including the explicit and inherited ACL rejections and the configuration/FIFO substitution during prompts. `scripts/inbox_smoke.py` passed its 21 checks and `scripts/inbox_scan_smoke.py` its 23, so the unified inbox keeps account identity, receipt timestamps and explicit incomplete coverage. `scripts/web_wizard_signal_smoke.py` passed its TERM and HUP teardown against the isolated test fixture. The Playwright browser fixture was not run, no Playwright install being available. No real account, credential or provider was contacted.
+
 ## Gmail validation and upstream submission
 
 Use a separate private configuration and a Keychain-backed app password. Run the connection check, list a small inbox page, read a known test message and download a known harmless attachment into a fresh directory. An optional send test should send only a user-approved message to a user-selected recipient.
