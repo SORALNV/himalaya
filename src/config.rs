@@ -323,6 +323,11 @@ pub struct AccountConfig {
     /// Whether a command with no `-a/--account` runs against this one.
     #[serde(default, skip_serializing_if = "is_default")]
     pub default: bool,
+    /// Plain label grouping this account with others, such as `work`.
+    ///
+    /// A display and selection hint only: no default, no inheritance.
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub group: Option<String>,
     /// Address this account sends as, absent `--from`.
     ///
     /// Neither validated nor required, an account that never composes

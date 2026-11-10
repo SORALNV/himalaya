@@ -7,7 +7,7 @@
   history.replaceState(null,"",location.pathname);
   let revision=0,epoch=0,generation="",ticket="",timer;
   let pending=Promise.resolve(),running=false,saving=false,ended=false,recovery=false;
-  let accounts=[],choices=[],nameEdited=false,loginEdited=false,legacyMetadata=null;
+  let accounts=[],groups={},choices=[],nameEdited=false,loginEdited=false,legacyMetadata=null;
   const credentials={};
   function options(select,items,selected) {
     select.replaceChildren(...items.map(([value,text])=>{const o=document.createElement("option");o.value=value;o.textContent=text;return o;}));
@@ -129,7 +129,7 @@
     }catch(error){if(current===epoch&&!ended){cancel();message(error.message,true);}}
     finally{if(payload.draft)scrub(payload.draft);}
   }
-  function renderAccounts(){$("accounts").replaceChildren(...(accounts.length?accounts:["登録はありません"]).map(name=>{const li=document.createElement("li");li.textContent=name;return li;}));}
+  function renderAccounts(){$("accounts").replaceChildren(...(accounts.length?accounts:["登録はありません"]).map(name=>{const li=document.createElement("li");li.textContent=name;if(groups[name]){const badge=document.createElement("span");badge.textContent=groups[name];badge.style.cssText="font-size:10px;color:#697b75;border:1px solid #dfe6e2;border-radius:4px;padding:1px 5px;margin-left:4px";li.appendChild(badge);}return li;}));}
   function reset(){cancel();revision++;clearSecrets();$("settings-form").reset();clearErrors();message();nameEdited=false;loginEdited=false;choices=[];$("discovered").hidden=true;$("settings-form").hidden=false;$("success").hidden=true;setMethods();update();$("email").focus();}
   $("all-fields").addEventListener("input",changed);
   $("all-fields").addEventListener("change",event=>{if(event.target.tagName==="SELECT")changed(event);});
@@ -167,7 +167,7 @@
   async function initialize(){
     if(location.protocol==="file:"){$("file-warning").hidden=false;ended=true;buttons();return;}
     if(!/^[0-9a-f]{64}$/.test(token)){ended=true;buttons();$("session-error").textContent="設定セッションがありません。Himalaya設定.command から開き直してください。";$("session-error").hidden=false;return;}
-    try{const data=await api("/api/status");accounts=data.accounts||[];legacyMetadata=data.legacy_mprg||null;renderAccounts();options($("backend"),data.backends.map(backend=>[backend,labels[backend]||backend]));for(const c of Object.values(credentials))options(c.source,data.sources.map(source=>[source.id,source.label+(source.installed?"":"（未導入）")]),"new");options($("smtp-mechanism"),methods);setMethods();update();$("email").focus();}
+    try{const data=await api("/api/status");accounts=data.accounts||[];groups=data.groups||{};legacyMetadata=data.legacy_mprg||null;renderAccounts();options($("backend"),data.backends.map(backend=>[backend,labels[backend]||backend]));for(const c of Object.values(credentials))options(c.source,data.sources.map(source=>[source.id,source.label+(source.installed?"":"（未導入）")]),"new");options($("smtp-mechanism"),methods);setMethods();update();$("email").focus();}
     catch(error){ended=true;buttons();$("session-error").textContent=error.message+" 起動し直してください。";$("session-error").hidden=false;}
   }
   initialize();
