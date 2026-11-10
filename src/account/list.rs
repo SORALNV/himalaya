@@ -19,13 +19,18 @@ use crate::{
     config::{AccountConfig, Config, NO_CONFIG_HINT, TableArrangementConfig},
     shared::table::style_from_preset,
 };
+use pimalaya_cli::table::sanitize;
 
 /// List all accounts declared in the configuration.
 ///
 /// Each row shows the account name, the backends with a config block,
-/// and whether it is the default account.
+/// its group, and whether it is the default account.
 #[derive(Debug, Parser)]
-pub struct AccountListCommand;
+pub struct AccountListCommand {
+    /// List only the accounts carrying this group.
+    #[arg(long, value_name = "NAME")]
+    pub group: Option<String>,
+}
 
 impl AccountListCommand {
     /// Loads the configuration and prints its accounts as a table.
@@ -58,6 +63,12 @@ impl AccountListCommand {
             .map(|(name, account)| AccountRow::from_account(name, account))
             .collect();
         accounts.sort_by(|a, b| a.name.cmp(&b.name));
+        if let Some(group) = &self.group {
+            accounts.retain(|account| account.group.as_deref() == Some(group.as_str()));
+            if accounts.is_empty() {
+                anyhow::bail!("No account carries the group `{}`", sanitize(group));
+            }
+        }
 
         let table = AccountsTable {
             preset,
@@ -94,6 +105,8 @@ pub struct AccountRow {
     pub name: String,
     /// Whether a command with no `-a/--account` runs against it.
     pub default: bool,
+    /// The plain label grouping it with other accounts, when set.
+    pub group: Option<String>,
     /// The backends it declares a block for.
     pub backends: Vec<&'static str>,
 }
@@ -133,6 +146,7 @@ impl AccountRow {
         Self {
             name: name.to_owned(),
             default: account.default,
+            group: account.group.clone(),
             backends,
         }
     }
@@ -163,6 +177,7 @@ impl fmt::Display for AccountsTable {
             .set_header(Row::from(vec![
                 Cell::new("NAME"),
                 Cell::new("BACKENDS"),
+                Cell::new("GROUP"),
                 Cell::new("DEFAULT"),
             ]))
             .add_rows(self.accounts.iter().map(|account| {
@@ -170,6 +185,7 @@ impl fmt::Display for AccountsTable {
                 row.max_height(1);
                 row.add_cell(Cell::new(&account.name).fg(self.colors.name));
                 row.add_cell(Cell::new(account.backends.join(", ")).fg(self.colors.backends));
+                row.add_cell(Cell::new(account.group.as_deref().unwrap_or("")));
                 row.add_cell(
                     Cell::new(if account.default { "yes" } else { "" }).fg(self.colors.default),
                 );

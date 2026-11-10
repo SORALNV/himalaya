@@ -15,6 +15,10 @@ Himalaya is configured through TOML: a top-level block plus named account blocks
 ### Requirement: Multi-account schema
 The config SHALL be multi-account: a top-level block holding shared defaults, plus `[accounts.<name>]` blocks. Each account carries at most one storage backend sub-block (`imap`, `jmap`, `gmail`, `msgraph`, `maildir`, `m2dir`, `mbox`, `pimdir`) and optional service sub-blocks for `smtp` and `sieve`.
 
+An account MAY carry one plain group label (`account.group = "work"`), defaulting to none. The group SHALL be a display and selection hint with no behaviour of its own: no default, no inheritance between accounts, no nesting.
+
+`account list` SHALL show each account's group in its own column, blank when unset, and SHALL accept `--group NAME` to list only the accounts carrying that group, erroring when none does. Without the flag every account SHALL be listed as before.
+
 The `sieve` block SHALL accept `sieve://`, `sieves://`, and `unix://` servers, and SHALL expose the shared TLS and SASL vocabulary, every mechanism the other backends accept reaching ManageSieve too.
 
 A bare authority SHALL resolve to `sieve://`, where the `imap` and `smtp` blocks resolve theirs to the implicit-TLS scheme: RFC 5804 registers one port, 4190, and defines STARTTLS as the way to TLS on it, so an implicit-TLS default would reach nothing on a stock server. `sieves://` SHALL stay accepted for the deployments listening for a TLS handshake straight away. `sieve.starttls` left unset SHALL follow the scheme, on for `sieve://` and off for the other two, and setting it on a `sieves://` server SHALL be an error.

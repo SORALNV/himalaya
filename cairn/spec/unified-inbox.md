@@ -8,7 +8,7 @@ status: current
 
 ### Requirement: Account identity and routing
 
-`inbox list` SHALL merge inbox summaries from all configured accounts in deterministic order. Global `-a NAME` SHALL select one account. No default account SHALL be required for an all-account listing. Each entry SHALL retain account, resolved mailbox and backend message ID. Equal IDs in different accounts SHALL remain distinct. `-m NAME` SHALL resolve each account's mailbox alias. Backend selection SHALL follow global `--backend`.
+`inbox list` SHALL merge inbox summaries from all configured accounts in deterministic order. Global `-a NAME` SHALL select one account. `--group NAME` SHALL sweep only the accounts carrying that group, expanding to them before the per-account loop; naming both `--group` and `-a` SHALL be an error, and a group no account carries SHALL be an error naming it. No default account SHALL be required for an all-account listing. Each entry SHALL retain account, resolved mailbox and backend message ID. Equal IDs in different accounts SHALL remain distinct. `-m NAME` SHALL resolve each account's mailbox alias. Backend selection SHALL follow global `--backend`.
 
 ### Requirement: Configurable receipt windows
 

@@ -276,7 +276,7 @@ impl<E: Services> Session<E> {
         }
         match (method, path) {
             ("GET", "/api/status") => Ok(
-                json!({"accounts": flow.target.names(), "saved": flow.saved,"backends":settings::backends(),"sources":settings::sources(),"legacy_mprg":settings::legacy_metadata()}),
+                json!({"accounts": flow.target.names(), "groups": flow.target.groups().into_iter().filter_map(|(name, group)| group.map(|group| (name, group))).collect::<std::collections::BTreeMap<_, _>>(), "saved": flow.saved,"backends":settings::backends(),"sources":settings::sources(),"legacy_mprg":settings::legacy_metadata()}),
             ),
             ("POST", "/api/finish") => {
                 let _: Empty =

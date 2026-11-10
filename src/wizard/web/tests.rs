@@ -35,7 +35,7 @@ use crate::{
 };
 
 const PASSWORD: &str = "abcdefghijklmnop";
-const INITIAL: &str = "# keep this comment\n[accounts.personal]\ndefault = true\nemail = \"personal@example.test\"\nmaildir.root = \"/unused\"\n";
+const INITIAL: &str = "# keep this comment\n[accounts.personal]\ndefault = true\nemail = \"personal@example.test\"\ngroup = \"work\"\nmaildir.root = \"/unused\"\n";
 
 #[derive(Clone, Default)]
 struct Fake {

@@ -44,6 +44,9 @@ pub struct InboxListCommand {
     /// Disable the configured receipt window.
     #[arg(long, conflicts_with = "since")]
     pub all_time: bool,
+    /// Sweep only the accounts carrying this group.
+    #[arg(long, value_name = "NAME")]
+    pub group: Option<String>,
     /// Maximum pages scanned per account; reaching this is reported.
     #[arg(long, default_value = "100", value_parser = clap::value_parser!(u32).range(1..=10000))]
     pub max_pages: u32,
@@ -126,6 +129,15 @@ impl InboxCommand {
         let mut config = Config::from_paths_or_default(paths)?.context("No configuration found")?;
         let mut names: Vec<String> = config.accounts.keys().cloned().collect();
         names.sort();
+        if let Some(group) = &cmd.group {
+            if selected.is_some() {
+                bail!("Use either --group or -a, not both");
+            }
+            names.retain(|name| config.accounts[name].group.as_deref() == Some(group.as_str()));
+            if names.is_empty() {
+                bail!("No account carries the group `{}`", sanitize(group));
+            }
+        }
         if let Some(name) = selected {
             if name.is_empty() || name == "default" {
                 names.retain(|name| config.accounts[name].default);
