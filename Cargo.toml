@@ -41,6 +41,7 @@ pimalaya-cli = { version = "0.2.6", default-features = false, features = ["build
 
 [dev-dependencies]
 tempfile = "3"
+io-oauth = { version = "0.5.2", default-features = false, features = ["client", "jwt-bearer", "rustls-ring"] }
 
 [dependencies]
 anyhow = "1"
