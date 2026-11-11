@@ -1,6 +1,7 @@
 //! # mbox message copy
 //!
-//! The `mbox message copy` command, copying messages to the end of another mbox.
+//! The `mbox message copy` command, copying messages to the end of another
+//! mbox.
 
 use anyhow::Result;
 use clap::Parser;
@@ -13,7 +14,8 @@ use crate::mbox::{
 
 /// Copy mbox message(s) to another mbox.
 ///
-/// Appends a copy of each message identified by the given id(s) to the target, with its flags and `From_` line.
+/// Appends a copy of each message identified by the given id(s) to the
+/// target, with its flags and `From_` line.
 #[derive(Debug, Parser)]
 pub struct MboxMessageCopyCommand {
     #[command(flatten)]

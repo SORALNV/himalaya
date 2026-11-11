@@ -8,6 +8,7 @@
 //! local before network. Each method matches on it and calls that
 //! protocol's adapter, which takes and returns the CLI's own
 //! [`crate::email`] types.
+
 //!
 //! The active [`Account`] is threaded as a sibling argument through every
 //! `execute` chain rather than bundled into the client.
