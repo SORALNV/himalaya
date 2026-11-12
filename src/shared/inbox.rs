@@ -133,7 +133,7 @@ impl InboxCommand {
             if selected.is_some() {
                 bail!("Use either --group or -a, not both");
             }
-            names.retain(|name| config.accounts[name].group.as_deref() == Some(group.as_str()));
+            names.retain(|name| config.accounts[name].groups.iter().any(|g| g == group));
             if names.is_empty() {
                 bail!("No account carries the group `{}`", sanitize(group));
             }

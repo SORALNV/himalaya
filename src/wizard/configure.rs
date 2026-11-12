@@ -175,8 +175,8 @@ impl ConfigureCommand {
 /// claims the default.
 struct ExistingConfig {
     names: Vec<String>,
-    /// Each account's plain group label, name-ordered, absent when unset.
-    groups: Vec<(String, Option<String>)>,
+    /// Each account's group labels, name-ordered, empty when unset.
+    groups: Vec<(String, Vec<String>)>,
     has_default: bool,
     snapshot: ConfigSnapshot,
 }
@@ -201,7 +201,7 @@ impl ExistingConfig {
                 let mut groups: Vec<_> = config
                     .accounts
                     .iter()
-                    .map(|(name, account)| (name.clone(), account.group.clone()))
+                    .map(|(name, account)| (name.clone(), account.groups.clone()))
                     .collect();
                 groups.sort_by(|a, b| a.0.cmp(&b.0));
                 groups
@@ -435,8 +435,8 @@ impl SetupTarget {
             .unwrap_or_default()
     }
 
-    /// Lists account names with their group label, secrets untouched.
-    pub fn groups(&self) -> Vec<(String, Option<String>)> {
+    /// Lists account names with their group labels, secrets untouched.
+    pub fn groups(&self) -> Vec<(String, Vec<String>)> {
         self.existing
             .as_ref()
             .map(|c| c.groups.clone())
@@ -962,8 +962,8 @@ mod tests {
         let existing = ExistingConfig {
             names: vec!["perso".to_string(), "perso-2".to_string()],
             groups: vec![
-                ("perso".to_string(), None),
-                ("perso-2".to_string(), Some("work".to_string())),
+                ("perso".to_string(), Vec::new()),
+                ("perso-2".to_string(), vec!["work".to_string()]),
             ],
             has_default: true,
             snapshot: ConfigSnapshot::read(&path).unwrap().unwrap(),

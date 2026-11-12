@@ -18,6 +18,7 @@
 <fieldset id="all-fields">
 <section class="section identity">
 <div class="two-cols"><div><label for="email">メールアドレス</label><div class="input-action"><input id="email" type="email" placeholder="you@example.com" spellcheck="false" autocapitalize="none" maxlength="254"><button id="discover" type="button" class="secondary">設定を自動取得</button></div><p id="email-error" class="field-error" hidden></p></div><div><label for="name">アカウント名</label><input id="name" placeholder="例：university" maxlength="64" spellcheck="false"><p class="hint">CLIで指定する名前。半角英数字・ハイフン・_ が使えます。</p><p id="name-error" class="field-error" hidden></p></div></div>
+<div id="groups-row"><label for="groups">グループ <span class="hint-inline">カンマ区切りで複数可</span></label><input id="groups" placeholder="例：work, private" spellcheck="false" autocomplete="off" list="group-choices"><datalist id="group-choices"></datalist><p class="hint">入力済みのグループ名から選ぶか、新しい名前を入力できます。</p></div>
 <div id="discovered" class="discovered" hidden><label for="service">取得した設定</label><select id="service"></select></div>
 </section>
 <section class="section">
