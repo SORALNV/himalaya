@@ -57,6 +57,35 @@ fn is_default_imap_alpn(alpn: &[String]) -> bool {
     alpn == default_imap_alpn().as_slice()
 }
 
+/// Reads one group label or a list of them, so `group = "work"` written for
+/// the single-label spelling keeps loading beside `groups = ["work", "personal"]`.
+fn string_or_groups<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct StringOrGroups;
+    impl<'de> serde::de::Visitor<'de> for StringOrGroups {
+        type Value = Vec<String>;
+        fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            f.write_str("a group label or a list of them")
+        }
+        fn visit_str<E: serde::de::Error>(self, label: &str) -> Result<Self::Value, E> {
+            Ok(vec![label.to_owned()])
+        }
+        fn visit_seq<A: serde::de::SeqAccess<'de>>(
+            self,
+            mut labels: A,
+        ) -> Result<Self::Value, A::Error> {
+            let mut groups = Vec::new();
+            while let Some(label) = labels.next_element::<String>()? {
+                groups.push(label);
+            }
+            Ok(groups)
+        }
+    }
+    deserializer.deserialize_any(StringOrGroups)
+}
+
 fn is_default_smtp_alpn(alpn: &[String]) -> bool {
     alpn == default_smtp_alpn().as_slice()
 }
@@ -323,11 +352,17 @@ pub struct AccountConfig {
     /// Whether a command with no `-a/--account` runs against this one.
     #[serde(default, skip_serializing_if = "is_default")]
     pub default: bool,
-    /// Plain label grouping this account with others, such as `work`.
+    /// Plain labels grouping this account with others, such as `work`.
     ///
     /// A display and selection hint only: no default, no inheritance.
-    #[serde(default, skip_serializing_if = "is_default")]
-    pub group: Option<String>,
+    /// Accepts one label (`group = "work"`) or a list (`groups = ["work"]`).
+    #[serde(
+        default,
+        skip_serializing_if = "is_default",
+        alias = "group",
+        deserialize_with = "string_or_groups"
+    )]
+    pub groups: Vec<String>,
     /// Address this account sends as, absent `--from`.
     ///
     /// Neither validated nor required, an account that never composes

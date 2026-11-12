@@ -291,6 +291,9 @@ pub struct Draft {
     pub user_id: String,
     #[serde(default)]
     pub root: String,
+    /// Plain labels grouping the account, trimmed and deduplicated on save.
+    #[serde(default)]
+    pub groups: Vec<String>,
     #[serde(default)]
     pub destination_confirmed: bool,
     #[serde(default)]
@@ -370,6 +373,16 @@ impl Draft {
         }
         if !local && !valid_email(&self.email) {
             return Err(invalid("email", "メールアドレスを入力してください。"));
+        }
+        if self.groups.len() > 8
+            || self.groups.iter().any(|g| {
+                g.is_empty() || g.len() > 32 || g.chars().any(char::is_control) || g.contains(',')
+            })
+        {
+            return Err(invalid(
+                "groups",
+                "グループは32文字以内・カンマを含まない名前で、8個までにしてください。",
+            ));
         }
         if !self.destination_confirmed {
             return Err(invalid("destination", "表示した接続先を確認してください。"));
@@ -506,6 +519,16 @@ impl Draft {
     pub fn account(&self, entries: &[String], checking: bool) -> AccountConfig {
         let mut account = AccountConfig {
             email: (!self.email.is_empty()).then(|| self.email.clone()),
+            groups: {
+                let mut groups: Vec<String> = Vec::new();
+                for label in &self.groups {
+                    let label = label.trim();
+                    if !label.is_empty() && !groups.iter().any(|g| g == label) {
+                        groups.push(label.to_owned());
+                    }
+                }
+                groups
+            },
             ..Default::default()
         };
         let entry = |index| entries.get(index).map(String::as_str).unwrap_or("");

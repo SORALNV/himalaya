@@ -89,9 +89,10 @@
     }
     if(event?.target.id==="backend")setMethods();update();
   }
+  function parseGroups(raw){const seen=new Set();for(const part of String(raw||"").split(/[,\u3001]/)){const label=part.trim();if(label&&seen.size<8)seen.add(label);}return[...seen];}
   function draft(){
     const connection=(prefix,c,primary=false)=>({host:$(prefix+"-host").value.trim(),port:Number($(prefix+"-port").value),encryption:$(prefix+"-encryption").value,login:$(primary?"login":"smtp-login").value.trim(),mechanism:$(primary?"mechanism":"smtp-mechanism").value,credential:secret(c)});
-    return {name:$("name").value.trim(),email:$("email").value.trim(),backend:$("backend").value,receive:connection("receive",credentials.primary,true),smtp:connection("smtp",credentials.secondary),smtp_enabled:$("smtp-enabled").checked,smtp_shared:$("smtp-shared").checked,server:$("server").value.trim(),user_id:$("user-id").value.trim(),root:$("root").value.trim(),destination_confirmed:$("destination").checked,legacy_mprg:$("legacy-enabled").checked?{imap_sha256:$("legacy-imap-pin").value.trim(),smtp_sha256:$("legacy-smtp-pin").value.trim(),approved:$("legacy-approved").checked}:null};
+    return {name:$("name").value.trim(),email:$("email").value.trim(),backend:$("backend").value,groups:parseGroups($("groups").value),receive:connection("receive",credentials.primary,true),smtp:connection("smtp",credentials.secondary),smtp_enabled:$("smtp-enabled").checked,smtp_shared:$("smtp-shared").checked,server:$("server").value.trim(),user_id:$("user-id").value.trim(),root:$("root").value.trim(),destination_confirmed:$("destination").checked,legacy_mprg:$("legacy-enabled").checked?{imap_sha256:$("legacy-imap-pin").value.trim(),smtp_sha256:$("legacy-smtp-pin").value.trim(),approved:$("legacy-approved").checked}:null};
   }
   function applyChoice(index){
     const choice=choices[index];if(!choice)return;changed();$("backend").value=choice.backend;setMethods();
@@ -129,7 +130,8 @@
     }catch(error){if(current===epoch&&!ended){cancel();message(error.message,true);}}
     finally{if(payload.draft)scrub(payload.draft);}
   }
-  function renderAccounts(){$("accounts").replaceChildren(...(accounts.length?accounts:["登録はありません"]).map(name=>{const li=document.createElement("li");li.textContent=name;if(groups[name]){const badge=document.createElement("span");badge.textContent=groups[name];badge.style.cssText="font-size:10px;color:#697b75;border:1px solid #dfe6e2;border-radius:4px;padding:1px 5px;margin-left:4px";li.appendChild(badge);}return li;}));}
+  function renderAccounts(){$("accounts").replaceChildren(...(accounts.length?accounts:["登録はありません"]).map(name=>{const li=document.createElement("li");li.textContent=name;for(const group of groups[name]||[]){const badge=document.createElement("span");badge.textContent=group;badge.className="group-badge";li.appendChild(badge);}return li;}));
+  $("group-choices").replaceChildren(...[...new Set(Object.values(groups).flat())].sort().map(group=>{const option=document.createElement("option");option.value=group;return option;}));}
   function reset(){cancel();revision++;clearSecrets();$("settings-form").reset();clearErrors();message();nameEdited=false;loginEdited=false;choices=[];$("discovered").hidden=true;$("settings-form").hidden=false;$("success").hidden=true;setMethods();update();$("email").focus();}
   $("all-fields").addEventListener("input",changed);
   $("all-fields").addEventListener("change",event=>{if(event.target.tagName==="SELECT")changed(event);});

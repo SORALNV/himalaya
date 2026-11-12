@@ -64,7 +64,7 @@ impl AccountListCommand {
             .collect();
         accounts.sort_by(|a, b| a.name.cmp(&b.name));
         if let Some(group) = &self.group {
-            accounts.retain(|account| account.group.as_deref() == Some(group.as_str()));
+            accounts.retain(|account| account.groups.iter().any(|g| g == group));
             if accounts.is_empty() {
                 anyhow::bail!("No account carries the group `{}`", sanitize(group));
             }
@@ -105,8 +105,8 @@ pub struct AccountRow {
     pub name: String,
     /// Whether a command with no `-a/--account` runs against it.
     pub default: bool,
-    /// The plain label grouping it with other accounts, when set.
-    pub group: Option<String>,
+    /// The plain labels grouping it with other accounts.
+    pub groups: Vec<String>,
     /// The backends it declares a block for.
     pub backends: Vec<&'static str>,
 }
@@ -146,7 +146,7 @@ impl AccountRow {
         Self {
             name: name.to_owned(),
             default: account.default,
-            group: account.group.clone(),
+            groups: account.groups.clone(),
             backends,
         }
     }
@@ -185,7 +185,7 @@ impl fmt::Display for AccountsTable {
                 row.max_height(1);
                 row.add_cell(Cell::new(&account.name).fg(self.colors.name));
                 row.add_cell(Cell::new(account.backends.join(", ")).fg(self.colors.backends));
-                row.add_cell(Cell::new(account.group.as_deref().unwrap_or("")));
+                row.add_cell(Cell::new(account.groups.join(", ")));
                 row.add_cell(
                     Cell::new(if account.default { "yes" } else { "" }).fg(self.colors.default),
                 );
