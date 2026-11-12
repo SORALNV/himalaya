@@ -22,37 +22,43 @@ use crate::{
 
 /// Manage messages using the shared API.
 ///
-/// A message is headers plus a body of MIME parts. The `compose`, `reply`,
-/// `forward` and `read` subcommands cover the simple cases through flags.
+/// `read` prints a message of a mailbox, `parse` the same view of a raw
+/// message given as a file or on stdin, without an account.
 ///
-/// Richer composition belongs to a standalone tool such as mml, piped into
-/// `message send` or `message add`.
+/// `compose`, `reply` and `forward` build a message from flags and print
+/// it, unless `--save` saves it to a mailbox or `--send` sends it.
+///
+/// `send` and `add` take a raw RFC 5322 message as it is, to send it or to
+/// save it to a mailbox. Richer composition belongs to a standalone tool
+/// such as mml, its output piped into them.
+///
+/// `copy`, `move` and `delete` act on messages already in a mailbox.
 #[derive(Debug, Subcommand)]
 pub enum MessageCommand {
     #[cfg(backend)]
-    #[command(visible_alias = "save")]
-    Add(MessageAddCommand),
+    Read(MessageReadCommand),
+    #[cfg(backend)]
+    Parse(MessageParseCommand),
     #[command(visible_alias = "write", alias = "new")]
     Compose(MessageComposeCommand),
+    #[cfg(backend)]
+    Reply(MessageReplyCommand),
+    #[cfg(backend)]
+    #[command(visible_alias = "fwd")]
+    Forward(MessageForwardCommand),
+    Send(MessageSendCommand),
+    #[cfg(backend)]
+    #[command(visible_alias = "save")]
+    Add(MessageAddCommand),
     #[cfg(backend)]
     #[command(visible_alias = "cp")]
     Copy(MessageCopyCommand),
     #[cfg(backend)]
-    #[command(visible_alias = "rm", alias = "remove")]
-    Delete(MessageDeleteCommand),
-    #[cfg(backend)]
-    #[command(visible_alias = "fwd")]
-    Forward(MessageForwardCommand),
-    #[cfg(backend)]
     #[command(visible_alias = "mv")]
     Move(MessageMoveCommand),
     #[cfg(backend)]
-    Parse(MessageParseCommand),
-    #[cfg(backend)]
-    Read(MessageReadCommand),
-    #[cfg(backend)]
-    Reply(MessageReplyCommand),
-    Send(MessageSendCommand),
+    #[command(visible_alias = "rm", alias = "remove")]
+    Delete(MessageDeleteCommand),
 }
 
 impl MessageCommand {

@@ -38,9 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Changed `himalaya message --help` to list the subcommands by purpose, `read` and `parse`, the builders `compose`, `reply` and `forward`, the raw `send` and `add`, then `copy`, `move` and `delete`, and their help to say what each does: a builder prints the message unless `--save` or `--send`, `send` and `add` take a raw message as it is, `parse` reads a file or its contents on stdin.
 - Changed the fork-only browser setup from Gmail/iCloud presets to normal Web forms backed by the existing discovery/authentication wizard, including external token brokers, explicit advanced-credential warnings, redacted previews and consecutive account additions.
-- Bumped ctutils to 0.4.6, rustls-webpki to 0.103.16 and webpki-root-certs to 1.0.11, fixing RUSTSEC-2026-0382, RUSTSEC-2026-0383 and RUSTSEC-2026-0385.
-- Bumped ctutils to 0.4.6, rustls-webpki to 0.103.16 and webpki-root-certs to 1.0.11, fixing RUSTSEC-2026-0382, RUSTSEC-2026-0383 and RUSTSEC-2026-0385.
 - Bumped ctutils to 0.4.6, rustls-webpki to 0.103.16 and webpki-root-certs to 1.0.11, fixing RUSTSEC-2026-0382, RUSTSEC-2026-0383 and RUSTSEC-2026-0385.
 - Changed `imap.id.auto` to send himalaya's canned `name`, `version`, `vendor` and `support-url` when `imap.id.fields` is unset, rather than `ID NIL`, which 163.com acknowledges and then refuses with `Unsafe Login`. An explicit empty `imap.id.fields` still sends `ID NIL` ([#774]).
 - Changed `envelope list` and `envelope search` on a pimdir account to read only what the page needs: newest first by keyset pages up to the end of the page, a search bounded by its date clauses and reading unread mail through the store's unread index, rather than every message of the mailbox. Output is unchanged; on 50,000 mails `envelope list -s 50` goes from 3.65 s to 28 ms.
