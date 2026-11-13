@@ -38,12 +38,11 @@ pub struct SmtpClient {
 impl SmtpClient {
     /// Opens the SMTP connection (TCP/TLS/STARTTLS, greeting, EHLO,
     /// SASL).
-    pub fn new(config: SmtpConfig) -> Result<Self> {
+    pub fn new(config: SmtpConfig, resolver: &mut SecretResolver) -> Result<Self> {
         let server = parse_smtp_server(&config.server)?;
         config.tls.validate_endpoint(&server, config.starttls)?;
         let tls = config.tls.into_tls(config.alpn);
         let domain: SmtpEhloDomain<'static> = Ipv4Addr::new(127, 0, 0, 1).into();
-        let mut resolver = SecretResolver::new();
         let sasl: Option<Sasl> = match config.sasl {
             // NOTE: a `unix://` sirup socket is already authenticated, so
             // no SASL is negotiated over it.
@@ -57,13 +56,13 @@ impl SmtpClient {
                 let port = server
                     .port()
                     .unwrap_or(Inner::default_port(server.scheme()));
-                Some(cfg.try_into_sasl(host, port, &mut resolver)?)
+                Some(cfg.try_into_sasl(host, port, resolver)?)
             }
             None => None,
         };
         let opts = SmtpClientStdConnectOptions {
             tls,
-            proxy: ProxyConfig::resolve(config.proxy, &mut resolver)?,
+            proxy: ProxyConfig::resolve(config.proxy, resolver)?,
             sasl,
             session: SmtpSessionOpenOptions {
                 starttls: config.starttls,
@@ -116,6 +115,6 @@ pub fn build_smtp_client(
         .take()
         .ok_or_else(|| anyhow!("SMTP config is missing for account `{name}`"))?;
     let account = Account::from(config).merge(Account::from(account_config));
-    let client = SmtpClient::new(smtp_config)?;
+    let client = SmtpClient::new(smtp_config, &mut SecretResolver::new())?;
     Ok((account, client))
 }

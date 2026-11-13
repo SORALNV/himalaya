@@ -36,13 +36,12 @@ pub struct ImapClient {
 impl ImapClient {
     /// Opens the connection and authenticates, caching the capabilities
     /// the handshake reported.
-    pub fn new(config: ImapConfig) -> Result<Self> {
+    pub fn new(config: ImapConfig, resolver: &mut SecretResolver) -> Result<Self> {
         let sort_fallback = config.sort.fallback;
         let server = parse_imap_server(&config.server)?;
         config.tls.validate_endpoint(&server, config.starttls)?;
         let tls = config.tls.into_tls(config.alpn);
         let auto_id = resolve_auto_id_params(&config.id)?;
-        let mut resolver = SecretResolver::new();
         let sasl: Option<Sasl> = match config.sasl {
             // NOTE: a `unix://` sirup socket greets with PREAUTH, so the
             // session is already authenticated and no SASL is negotiated.
@@ -54,13 +53,13 @@ impl ImapClient {
                 // NOTE: url knows no imap default port, so the fallback is
                 // the same scheme default io-imap connects with.
                 let port = server.port().unwrap_or(default_port(server.scheme()));
-                Some(cfg.try_into_sasl(host, port, &mut resolver)?)
+                Some(cfg.try_into_sasl(host, port, resolver)?)
             }
             None => None,
         };
         let opts = ImapClientStdConnectOptions {
             tls,
-            proxy: ProxyConfig::resolve(config.proxy, &mut resolver)?,
+            proxy: ProxyConfig::resolve(config.proxy, resolver)?,
             sasl,
             session: ImapSessionOpenOptions {
                 starttls: config.starttls,
@@ -138,6 +137,6 @@ pub fn build_imap_client(
         .take()
         .ok_or_else(|| anyhow!("IMAP config is missing for account `{name}`"))?;
     let account = Account::from(config).merge(Account::from(account_config));
-    let client = ImapClient::new(imap_config)?;
+    let client = ImapClient::new(imap_config, &mut SecretResolver::new())?;
     Ok((account, client))
 }

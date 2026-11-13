@@ -317,7 +317,8 @@ impl InboxScanCommand {
         {
             return Err(ScanError("INVALID_CURSOR"));
         }
-        let mut client = ImapClient::new(imap).map_err(|_| ScanError("SCAN_FAILED"))?;
+        let mut client = ImapClient::new(imap, &mut pimalaya_config::secret::SecretResolver::new())
+            .map_err(|_| ScanError("SCAN_FAILED"))?;
         client
             .stream
             .set_read_timeout(Some(Duration::from_secs(8)))

@@ -52,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed a send over SMTP running again the credential command the IMAP block already ran, which `message send` with `save-copy` asked for twice ([#813]).
 - Fixed the named configuration wizard accepting special files or a replaced configuration during prompts. On macOS, ACL-bearing save targets are refused before writing generated credentials.
 - Fixed generated configuration files being readable by other users under a permissive umask on Unix. New files use mode 0600, new configuration directories use mode 0700, and appending restricts the file permissions.
 - Fixed `hasAttachment` reading differently per backend ([#802]).
@@ -1471,6 +1472,7 @@ Few major concepts changed:
 [#786]: https://github.com/pimalaya/himalaya/issues/786
 [#790]: https://github.com/pimalaya/himalaya/issues/790
 [#802]: https://github.com/pimalaya/himalaya/issues/802
+[#813]: https://github.com/pimalaya/himalaya/issues/813
 
 [core#1]: https://github.com/pimalaya/core/issues/1
 [core#10]: https://github.com/pimalaya/core/issues/10

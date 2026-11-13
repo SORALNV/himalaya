@@ -593,8 +593,20 @@ mod legacy_tests {
         assert!(connect_imap(&imap, &mut resolver).is_err());
         assert!(connect_smtp(&smtp, &mut resolver).is_err());
         assert!(!marker.exists());
-        assert!(crate::imap::client::ImapClient::new(imap).is_err());
-        assert!(crate::smtp::client::SmtpClient::new(smtp).is_err());
+        assert!(
+            crate::imap::client::ImapClient::new(
+                imap,
+                &mut pimalaya_config::secret::SecretResolver::new()
+            )
+            .is_err()
+        );
+        assert!(
+            crate::smtp::client::SmtpClient::new(
+                smtp,
+                &mut pimalaya_config::secret::SecretResolver::new(),
+            )
+            .is_err()
+        );
         assert!(!marker.exists());
     }
 }
